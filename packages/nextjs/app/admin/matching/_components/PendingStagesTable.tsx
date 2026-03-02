@@ -6,10 +6,9 @@ interface Props {
   stages: PendingStage[];
   runningJobs: Map<string, string>;
   onMatch: (sourceType: "snapshot" | "tally", stageId: string) => void;
-  onMatchAll: () => void;
 }
 
-export function PendingStagesTable({ stages, runningJobs, onMatch, onMatchAll }: Props) {
+export function PendingStagesTable({ stages, runningJobs, onMatch }: Props) {
   if (stages.length === 0) {
     return (
       <div className="bg-base-200 rounded-xl p-6 text-center text-base-content/60">No pending stages to match.</div>
@@ -18,17 +17,8 @@ export function PendingStagesTable({ stages, runningJobs, onMatch, onMatchAll }:
 
   return (
     <div className="card bg-base-100 border border-base-300 shadow-sm rounded-xl">
-      <div className="p-3 lg:p-4 border-b border-base-300 flex items-center justify-between">
+      <div className="p-3 lg:p-4 border-b border-base-300">
         <span className="text-sm text-base-content/60">{stages.length} pending stage(s)</span>
-        <button className="btn btn-primary btn-sm" onClick={onMatchAll} disabled={runningJobs.size > 0}>
-          {runningJobs.size > 0 ? (
-            <>
-              <span className="loading loading-spinner loading-xs" /> Matching...
-            </>
-          ) : (
-            "Match All Pending"
-          )}
-        </button>
       </div>
       <div className="relative w-full overflow-x-auto">
         <table className="table table-sm w-full">

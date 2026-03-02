@@ -121,12 +121,6 @@ export function MatchingDashboard() {
     [pollJob],
   );
 
-  const matchAll = useCallback(() => {
-    for (const stage of pending) {
-      executeMatch(stage.sourceType, stage.stageId);
-    }
-  }, [pending, executeMatch]);
-
   if (loading) {
     return (
       <div className="flex justify-center py-12">
@@ -148,7 +142,7 @@ export function MatchingDashboard() {
 
       <section>
         <h2 className="text-2xl font-semibold mb-2">Pending Stages</h2>
-        <PendingStagesTable stages={pending} runningJobs={runningJobs} onMatch={executeMatch} onMatchAll={matchAll} />
+        <PendingStagesTable stages={pending} runningJobs={runningJobs} onMatch={executeMatch} />
       </section>
 
       <section>

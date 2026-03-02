@@ -1,8 +1,4 @@
-import {
-  getUnprocessedSnapshotStages,
-  getUnprocessedTallyStages,
-  upsertMatchingResult,
-} from "../database/repositories/matching";
+import { upsertMatchingResult } from "../database/repositories/matching";
 import { getAllProposals } from "../database/repositories/proposals";
 import { getSnapshotStageById, updateSnapshotProposalId } from "../database/repositories/snapshot";
 import { getTallyStageById, updateTallyProposalId } from "../database/repositories/tally";
@@ -165,49 +161,4 @@ export async function matchStage(
   });
 
   return { status: isMatched ? "matched" : "no_match", proposalId: llmResult.proposal_id };
-}
-
-export async function matchAllUnprocessed(sourceType?: "tally" | "snapshot"): Promise<void> {
-  const types: ("tally" | "snapshot")[] = sourceType ? [sourceType] : ["tally", "snapshot"];
-
-  for (const type of types) {
-    console.log(`\n${"=".repeat(60)}`);
-    console.log(`Processing unprocessed ${type} stages`);
-    console.log("=".repeat(60));
-
-    let stages: StageInfo[];
-
-    if (type === "tally") {
-      const rows = await getUnprocessedTallyStages();
-      stages = rows.map(r => r.tallyStage as StageInfo);
-    } else {
-      const rows = await getUnprocessedSnapshotStages();
-      stages = rows.map(r => r.snapshotStage as StageInfo);
-    }
-
-    console.log(`Found ${stages.length} unprocessed ${type} stages\n`);
-
-    if (stages.length === 0) continue;
-
-    let matched = 0;
-    let noMatch = 0;
-    let errors = 0;
-
-    for (const stage of stages) {
-      try {
-        const result = await matchStage(type, stage.id);
-        if (result.status === "matched") matched++;
-        else noMatch++;
-      } catch (err) {
-        errors++;
-        console.error(`  ERROR matching stage ${stage.id}: ${err}`);
-      }
-    }
-
-    console.log(`\n--- ${type.toUpperCase()} Summary ---`);
-    console.log(`  Matched: ${matched}`);
-    console.log(`  No match: ${noMatch}`);
-    console.log(`  Errors: ${errors}`);
-    console.log(`  Total: ${stages.length}`);
-  }
 }
