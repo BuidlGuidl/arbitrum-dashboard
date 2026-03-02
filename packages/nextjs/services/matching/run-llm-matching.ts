@@ -1,15 +1,14 @@
-import { matchAllUnprocessed, matchStage } from "./llm-matching";
+import { matchStage } from "./llm-matching";
 import * as dotenv from "dotenv";
 import * as path from "path";
 
 // Load environment variables before importing database modules
 dotenv.config({ path: path.resolve(__dirname, "../../.env.development") });
 
-function parseArgs(): { type?: "tally" | "snapshot"; id?: string; all: boolean } {
+function parseArgs(): { type?: "tally" | "snapshot"; id?: string } {
   const args = process.argv.slice(2);
   let type: "tally" | "snapshot" | undefined;
   let id: string | undefined;
-  let all = false;
 
   for (let i = 0; i < args.length; i++) {
     switch (args[i]) {
@@ -23,9 +22,6 @@ function parseArgs(): { type?: "tally" | "snapshot"; id?: string; all: boolean }
       case "--id":
         id = args[++i];
         break;
-      case "--all":
-        all = true;
-        break;
       default:
         console.error(`Unknown argument: ${args[i]}`);
         printUsage();
@@ -33,7 +29,7 @@ function parseArgs(): { type?: "tally" | "snapshot"; id?: string; all: boolean }
     }
   }
 
-  return { type, id, all };
+  return { type, id };
 }
 
 function printUsage(): void {
@@ -41,31 +37,21 @@ function printUsage(): void {
 Usage:
   yarn match:llm --type tally --id <stage-uuid>    Match a specific tally stage
   yarn match:llm --type snapshot --id <stage-uuid>  Match a specific snapshot stage
-  yarn match:llm --type tally --all                 Match all unprocessed tally stages
-  yarn match:llm --type snapshot --all              Match all unprocessed snapshot stages
-  yarn match:llm --all                              Match all unprocessed stages (both types)
 `);
 }
 
 async function main(): Promise<void> {
-  const { type, id, all } = parseArgs();
+  const { type, id } = parseArgs();
 
-  if (id) {
-    // Match a specific stage by ID
-    if (!type) {
-      console.error("--type is required when using --id");
-      process.exit(1);
-    }
-    console.log(`Matching ${type} stage: ${id}\n`);
-    const result = await matchStage(type, id);
-    console.log(`\nResult: ${result.status}${result.proposalId ? ` → ${result.proposalId}` : ""}`);
-  } else if (all) {
-    // Match all unprocessed stages
-    await matchAllUnprocessed(type);
-  } else {
+  if (!id || !type) {
+    console.error("Both --type and --id are required");
     printUsage();
     process.exit(1);
   }
+
+  console.log(`Matching ${type} stage: ${id}\n`);
+  const result = await matchStage(type, id);
+  console.log(`\nResult: ${result.status}${result.proposalId ? ` → ${result.proposalId}` : ""}`);
 }
 
 main()
