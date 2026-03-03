@@ -44,17 +44,7 @@ function formatDate(dateStr: string | null) {
   return new Date(dateStr).toLocaleString();
 }
 
-function ResultDetailModal({
-  result,
-  isRunning,
-  onRematch,
-  onClose,
-}: {
-  result: MatchingResultRow;
-  isRunning: boolean;
-  onRematch: () => void;
-  onClose: () => void;
-}) {
+function ResultDetailModal({ result, onClose }: { result: MatchingResultRow; onClose: () => void }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
 
   return (
@@ -148,11 +138,7 @@ function ResultDetailModal({
           </div>
         </div>
 
-        {/* Action */}
         <div className="modal-action">
-          <button className="btn btn-primary btn-sm" onClick={onRematch} disabled={isRunning}>
-            {isRunning ? <span className="loading loading-spinner loading-xs" /> : "Re-match"}
-          </button>
           <button className="btn btn-sm" onClick={onClose}>
             Close
           </button>
@@ -293,16 +279,7 @@ export function MatchingResultsTable({ results, runningJobs, onRematch }: Props)
         </table>
       </div>
 
-      {selectedResult && (
-        <ResultDetailModal
-          result={selectedResult}
-          isRunning={runningJobs.has(selectedResult.source_stage_id)}
-          onRematch={() => {
-            onRematch(selectedResult.source_type, selectedResult.source_stage_id);
-          }}
-          onClose={() => setSelectedResult(null)}
-        />
-      )}
+      {selectedResult && <ResultDetailModal result={selectedResult} onClose={() => setSelectedResult(null)} />}
     </div>
   );
 }
