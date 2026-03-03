@@ -19,7 +19,7 @@ export type StatCardConfig = {
 export const STAT_CARD_CONFIG: StatCardConfig[] = [
   {
     title: "Active Discussions",
-    sub: "Forum stage proposals",
+    sub: "Forum stage proposals with no offchain or onchain voting stages",
     color: "text-orange-500",
     Icon: UsersIcon,
     key: "discussions",

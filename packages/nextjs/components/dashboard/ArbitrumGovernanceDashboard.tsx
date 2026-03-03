@@ -102,7 +102,7 @@ export const ArbitrumGovernanceDashboard = ({ proposals }: { proposals: Dashboar
           </select>
         </div>
         <label className="flex items-center gap-2 whitespace-nowrap">
-          <span className="text-sm font-medium">Show forum proposals</span>
+          <span className="text-sm font-medium">Show active forum discussions</span>
           <input
             type="checkbox"
             className="toggle toggle-primary"
