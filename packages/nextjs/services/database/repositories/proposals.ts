@@ -120,7 +120,7 @@ export async function getDashboardProposals() {
       tallyLastUpdate: timeAgo(tally?.last_activity ?? tally?.updated_at ?? null),
       category: row.category ?? "Uncategorized",
       author: row.author_name ?? "Unknown",
-      votes: extractTallyVotes(tallyOptions) ?? extractSnapshotVotes(snapshotOptions),
+      votes: tally ? extractTallyVotes(tallyOptions) : extractSnapshotVotes(snapshotOptions),
       lastActivity: timeAgo(lastActivityDate),
       snapshotHistory,
       tallyHistory,
