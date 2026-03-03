@@ -48,10 +48,10 @@ export async function getDashboardProposals() {
         limit: 1,
       },
       snapshotStages: {
-        orderBy: (snapshotStage, { desc }) => [desc(snapshotStage.updated_at)],
+        orderBy: (snapshotStage, { desc }) => [desc(snapshotStage.voting_end)],
       },
       tallyStages: {
-        orderBy: (tallyStage, { desc }) => [desc(tallyStage.updated_at)],
+        orderBy: (tallyStage, { desc }) => [desc(tallyStage.last_activity)],
       },
     },
     orderBy: (proposals, { desc }) => [desc(proposals.updated_at)],
