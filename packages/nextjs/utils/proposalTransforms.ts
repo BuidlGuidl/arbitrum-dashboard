@@ -54,6 +54,7 @@ export function mapTallyStatus(status: string | null, substatus: string | null):
   if (!status) return null;
   const s = status.toLowerCase();
   if (s === "executed") return "Executed";
+  if (s === "crosschainexecuted") return "Cross-chain Executed";
   if (s === "canceled" || s === "cancelled") return "Canceled";
   if (s === "defeated") return "Defeated";
   if (s === "queued") return `Pending execution (${substatus || "Proposal queued"})`;
@@ -70,8 +71,8 @@ export function resolveSnapshotResult(status: string | null, options: SnapshotOp
   if (s === "pending") return "Pending";
 
   if (s === "closed" && options?.choices && options?.scores && options.choices.length >= 2) {
-    const forIdx = options.choices.findIndex(c => c.toLowerCase() === "for");
-    const againstIdx = options.choices.findIndex(c => c.toLowerCase() === "against");
+    const forIdx = options.choices.findIndex(c => c.toLowerCase().startsWith("for"));
+    const againstIdx = options.choices.findIndex(c => c.toLowerCase().startsWith("against"));
     if (forIdx !== -1 && againstIdx !== -1) {
       return options.scores[forIdx] > options.scores[againstIdx] ? "Passed" : "Failed";
     }
@@ -83,9 +84,26 @@ export function resolveSnapshotResult(status: string | null, options: SnapshotOp
   return s === "closed" ? "Closed" : status;
 }
 
-export function extractTallyVotes(
-  options: TallyOptions | null,
-): { for: string; against: string; total: string } | undefined {
+export type VoteInfo = {
+  for?: string;
+  against?: string;
+  choices?: { label: string; shortLabel: string; value: string }[];
+  total: string;
+};
+
+function formatScore(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(2)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(2)}K`;
+  return n.toFixed(2);
+}
+
+function truncateLabel(label: string): string {
+  const words = label.split(/\s+/);
+  if (words.length <= 2) return label;
+  return `${words.slice(0, 2).join(" ")}…`;
+}
+
+export function extractTallyVotes(options: TallyOptions | null): VoteInfo | undefined {
   if (!options?.voteStats?.length) return undefined;
 
   const forStat = options.voteStats.find(s => s.type.toLowerCase() === "for");
@@ -97,4 +115,30 @@ export function extractTallyVotes(
   const totalRaw = options.voteStats.reduce((sum, s) => sum + Number(s.votesCount), 0);
 
   return { for: forCount, against: againstCount, total: formatVoteCount(totalRaw.toString()) };
+}
+
+export function extractSnapshotVotes(options: SnapshotOptions | null): VoteInfo | undefined {
+  if (!options?.choices?.length || !options?.scores?.length) return undefined;
+
+  const forIdx = options.choices.findIndex(c => c.toLowerCase().startsWith("for"));
+  const againstIdx = options.choices.findIndex(c => c.toLowerCase().startsWith("against"));
+  const total = options.scores.reduce((sum, s) => sum + s, 0);
+
+  // Binary For/Against vote
+  if (forIdx !== -1 && againstIdx !== -1) {
+    return {
+      for: formatScore(options.scores[forIdx] ?? 0),
+      against: formatScore(options.scores[againstIdx] ?? 0),
+      total: formatScore(total),
+    };
+  }
+
+  // Multi-choice vote: show all choices
+  const choices = options.choices.map((label, i) => ({
+    label,
+    shortLabel: truncateLabel(label),
+    value: formatScore(options.scores[i] ?? 0),
+  }));
+
+  return { choices, total: formatScore(total) };
 }

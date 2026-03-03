@@ -51,7 +51,13 @@ export const computeStats = (proposals: DashboardProposal[]): Stats => ({
   discussions: proposals.filter(p => p.forumStatus === "Active Discussion").length,
   offchain: proposals.filter(p => p.snapshotStatus && !["Passed", "Failed"].includes(p.snapshotStatus)).length,
   onchain: proposals.filter(
-    p => p.tallyStatus && !["Executed", "Canceled"].includes(p.tallyStatus) && !p.tallyStatus.startsWith("Pending"),
+    p =>
+      p.tallyStatus &&
+      !["Executed", "Cross-chain Executed", "Canceled", "Defeated"].includes(p.tallyStatus) &&
+      !p.tallyStatus.startsWith("Pending"),
   ).length,
-  done: proposals.filter(p => p.tallyStatus === "Executed" || p.tallyStatus?.startsWith("Pending")).length,
+  done: proposals.filter(
+    p =>
+      p.tallyStatus === "Executed" || p.tallyStatus === "Cross-chain Executed" || p.tallyStatus?.startsWith("Pending"),
+  ).length,
 });
