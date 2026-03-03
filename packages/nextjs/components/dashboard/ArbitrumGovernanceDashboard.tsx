@@ -8,13 +8,16 @@ import type { DashboardProposal } from "~~/services/database/repositories/propos
 import { STAT_CARD_CONFIG, computeStats } from "~~/utils/governanceStats";
 
 const getStatus = (p: DashboardProposal) => {
-  if (p.tallyStatus === "Executed") return "Executed";
+  if (p.tallyStatus === "Executed" || p.tallyStatus === "Cross-chain Executed") return "Executed";
   if (p.tallyStatus?.startsWith("Pending execution")) return "Pending execution";
   if (p.tallyStatus === "Canceled") return "Canceled";
+  if (p.tallyStatus === "Defeated") return "Defeated";
+  if (p.tallyStatus === "Active") return "Active On-chain Vote";
   if (p.snapshotStatus === "Passed") return "Awaiting On-chain Vote";
   if (p.snapshotStatus === "Failed") return "Failed Off-chain";
+  if (p.snapshotStatus === "Active" || p.snapshotStatus === "Pending") return "Active Off-chain Vote";
   if (p.forumStatus === "Active Discussion") return "In Discussion";
-  return "Draft";
+  return "Unknown";
 };
 
 export const STAGE_COLORS = {
@@ -33,7 +36,7 @@ const getBadgeColor = (p: DashboardProposal) => {
 export const ArbitrumGovernanceDashboard = ({ proposals }: { proposals: DashboardProposal[] }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [categoryFilter, setCategoryFilter] = useState("all");
+
   const [showForumOnly, setShowForumOnly] = useState(false);
 
   const filtered = useMemo(
@@ -43,11 +46,11 @@ export const ArbitrumGovernanceDashboard = ({ proposals }: { proposals: Dashboar
         if (search && !p.title.toLowerCase().includes(search) && !p.author?.toLowerCase().includes(search))
           return false;
         if (statusFilter !== "all" && !getStatus(p).toLowerCase().includes(statusFilter.toLowerCase())) return false;
-        if (categoryFilter !== "all" && p.category?.toLowerCase() !== categoryFilter.toLowerCase()) return false;
+
         if (!showForumOnly && !p.snapshotStatus && !p.tallyStatus) return false;
         return true;
       }),
-    [searchTerm, statusFilter, categoryFilter, showForumOnly, proposals],
+    [searchTerm, statusFilter, showForumOnly, proposals],
   );
 
   const stats = useMemo(() => computeStats(proposals), [proposals]);
@@ -86,21 +89,16 @@ export const ArbitrumGovernanceDashboard = ({ proposals }: { proposals: Dashboar
             onChange={e => setStatusFilter(e.target.value)}
           >
             <option value="all">All Statuses</option>
-            <option value="discussion">In Discussion</option>
-            <option value="executed">Executed</option>
-            <option value="pending">Pending</option>
-            <option value="failed">Failed</option>
-            <option value="canceled">Canceled</option>
-          </select>
-          <select
-            className="select select-bordered w-56 max-w-full"
-            value={categoryFilter}
-            onChange={e => setCategoryFilter(e.target.value)}
-          >
-            <option value="all">All Categories</option>
-            <option value="constitutional">Constitutional</option>
-            <option value="non-constitutional">Non-Constitutional</option>
-            <option value="treasury">Treasury</option>
+            <option value="discussion">Forum: In Discussion</option>
+            <option value="active off-chain">Snapshot: Active Off-chain Vote</option>
+            <option value="awaiting">Snapshot: Awaiting On-chain Vote</option>
+            <option value="failed">Snapshot: Failed</option>
+            <option value="executed">Tally: Executed</option>
+            <option value="pending">Tally: Pending execution</option>
+            <option value="defeated">Tally: Defeated</option>
+            <option value="canceled">Tally: Canceled</option>
+            <option value="active on-chain">Tally: Active On-chain Vote</option>
+            <option value="unknown">Unknown</option>
           </select>
         </div>
         <label className="flex items-center gap-2 whitespace-nowrap">
@@ -139,7 +137,7 @@ export const ArbitrumGovernanceDashboard = ({ proposals }: { proposals: Dashboar
                     <span className="text-xs text-base-content/60 font-normal">(Tally)</span>
                   </div>
                 </th>
-                <th>Category</th>
+                <th>Last Activity</th>
                 <th>Votes</th>
                 <th>Links</th>
               </tr>
@@ -178,16 +176,29 @@ export const ArbitrumGovernanceDashboard = ({ proposals }: { proposals: Dashboar
                     />
                   </td>
                   <td>
-                    <div className="badge badge-sm whitespace-nowrap border border-base-300 bg-transparent text-base-content/70">
-                      {p.category}
-                    </div>
+                    <span className="text-xs text-base-content/60 whitespace-nowrap">{p.lastActivity ?? "\u2014"}</span>
                   </td>
                   <td>
                     {p.votes ? (
                       <div className="text-xs leading-tight">
-                        <div className="text-green-600 font-semibold">For: {p.votes.for}</div>
-                        <div className="text-red-600 font-semibold">Against: {p.votes.against}</div>
-                        <div className="text-base-content/60">Total: {p.votes.total}</div>
+                        {p.votes.for !== undefined ? (
+                          <>
+                            <div className="text-green-600 font-semibold">For: {p.votes.for}</div>
+                            <div className="text-red-600 font-semibold">Against: {p.votes.against}</div>
+                            <div className="text-base-content/60">Total: {p.votes.total}</div>
+                          </>
+                        ) : p.votes.choices ? (
+                          <div
+                            className="tooltip tooltip-left"
+                            data-tip={p.votes.choices.map(c => `${c.label}: ${c.value}`).join("\n")}
+                          >
+                            {p.votes.choices.map((c, i) => (
+                              <div key={i} className="text-base-content/80">
+                                <span className="font-semibold">{c.shortLabel}:</span> {c.value}
+                              </div>
+                            ))}
+                          </div>
+                        ) : null}
                       </div>
                     ) : (
                       <span className="text-base-content/60 text-xs">No votes yet</span>

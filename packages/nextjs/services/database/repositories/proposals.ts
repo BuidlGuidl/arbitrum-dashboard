@@ -4,6 +4,8 @@ import { db } from "~~/services/database/config/postgresClient";
 import {
   type SnapshotOptions,
   type TallyOptions,
+  type VoteInfo,
+  extractSnapshotVotes,
   extractTallyVotes,
   mapTallyStatus,
   resolveSnapshotResult,
@@ -28,7 +30,7 @@ export type VotingStageItem = {
   lastUpdate: string | null;
   link: string | null;
   title: string | null;
-  votes?: { for: string; against: string; total: string };
+  votes?: VoteInfo;
 };
 
 // Strip "Pending execution (...)" wrapper for compact badge display
@@ -53,6 +55,15 @@ export async function getDashboardProposals() {
       },
     },
     orderBy: (proposals, { desc }) => [desc(proposals.updated_at)],
+  });
+
+  // Sort by most relevant stage date: tally > snapshot > forum
+  rows.sort((a, b) => {
+    const dateA =
+      a.tallyStages[0]?.last_activity ?? a.snapshotStages[0]?.voting_end ?? a.forumStages[0]?.last_message_at;
+    const dateB =
+      b.tallyStages[0]?.last_activity ?? b.snapshotStages[0]?.voting_end ?? b.forumStages[0]?.last_message_at;
+    return (dateB?.getTime() ?? 0) - (dateA?.getTime() ?? 0);
   });
 
   return rows.map(row => {
@@ -92,6 +103,8 @@ export async function getDashboardProposals() {
       };
     });
 
+    const lastActivityDate = tally?.last_activity ?? snapshot?.voting_end ?? forum?.last_message_at ?? null;
+
     return {
       id: row.id,
       title: row.title,
@@ -107,7 +120,8 @@ export async function getDashboardProposals() {
       tallyLastUpdate: timeAgo(tally?.last_activity ?? tally?.updated_at ?? null),
       category: row.category ?? "Uncategorized",
       author: row.author_name ?? "Unknown",
-      votes: extractTallyVotes(tallyOptions),
+      votes: extractTallyVotes(tallyOptions) ?? extractSnapshotVotes(snapshotOptions),
+      lastActivity: timeAgo(lastActivityDate),
       snapshotHistory,
       tallyHistory,
     };
