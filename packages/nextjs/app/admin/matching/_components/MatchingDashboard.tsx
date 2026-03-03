@@ -12,6 +12,14 @@ export function MatchingDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const removeRunningJob = useCallback((stageId: string) => {
+    setRunningJobs(prev => {
+      const next = new Map(prev);
+      next.delete(stageId);
+      return next;
+    });
+  }, []);
+
   const fetchData = useCallback(async () => {
     try {
       const [pendingRes, resultsRes] = await Promise.all([
@@ -43,11 +51,7 @@ export function MatchingDashboard() {
             retries++;
             if (retries >= 3) {
               // After 3 failed polls, give up and clean up loading state
-              setRunningJobs(prev => {
-                const next = new Map(prev);
-                next.delete(stageId);
-                return next;
-              });
+              removeRunningJob(stageId);
               setError("Lost track of matching job. Please refresh the page.");
               return;
             }
@@ -58,11 +62,7 @@ export function MatchingDashboard() {
           const job = await res.json();
 
           if (job.status === "completed" || job.status === "error") {
-            setRunningJobs(prev => {
-              const next = new Map(prev);
-              next.delete(stageId);
-              return next;
-            });
+            removeRunningJob(stageId);
             await fetchData();
             return;
           }
@@ -71,16 +71,12 @@ export function MatchingDashboard() {
           setTimeout(poll, 2000);
         } catch {
           // On error, stop polling
-          setRunningJobs(prev => {
-            const next = new Map(prev);
-            next.delete(stageId);
-            return next;
-          });
+          removeRunningJob(stageId);
         }
       };
       setTimeout(poll, 2000);
     },
-    [fetchData],
+    [fetchData, removeRunningJob],
   );
 
   const executeMatch = useCallback(
@@ -98,11 +94,7 @@ export function MatchingDashboard() {
         if (!res.ok) {
           const data = await res.json();
           setError(data.error || "Failed to start matching");
-          setRunningJobs(prev => {
-            const next = new Map(prev);
-            next.delete(stageId);
-            return next;
-          });
+          removeRunningJob(stageId);
           return;
         }
 
@@ -111,14 +103,10 @@ export function MatchingDashboard() {
         pollJob(jobId, stageId);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to start matching");
-        setRunningJobs(prev => {
-          const next = new Map(prev);
-          next.delete(stageId);
-          return next;
-        });
+        removeRunningJob(stageId);
       }
     },
-    [pollJob],
+    [pollJob, removeRunningJob],
   );
 
   if (loading) {

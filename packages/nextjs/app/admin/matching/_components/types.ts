@@ -6,13 +6,23 @@ export interface PendingStage {
   url: string | null;
 }
 
+export type SourceType = "snapshot" | "tally";
+export type MatchStatus = "matched" | "no_match" | "pending_review";
+export type MatchMethod = "llm" | "csv_import" | "manual_override";
+
+export function typeBadgeColor(sourceType: string) {
+  return sourceType === "snapshot"
+    ? "border-purple-200 bg-purple-100 text-purple-600"
+    : "border-cyan-200 bg-cyan-100 text-cyan-600";
+}
+
 export interface MatchingResultRow {
   id: string;
-  source_type: string;
+  source_type: SourceType;
   source_stage_id: string;
   proposal_id: string | null;
-  status: string;
-  method: string;
+  status: MatchStatus;
+  method: MatchMethod;
   confidence: number | null;
   reasoning: string | null;
   source_title: string | null;

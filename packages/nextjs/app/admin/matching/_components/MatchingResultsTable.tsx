@@ -1,15 +1,16 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import { MatchingResultRow } from "./types";
+import { MatchStatus, MatchingResultRow, SourceType } from "./types";
+import { typeBadgeColor } from "./types";
 
 interface Props {
   results: MatchingResultRow[];
   runningJobs: Map<string, string>;
-  onRematch: (sourceType: "snapshot" | "tally", stageId: string) => void;
+  onRematch: (sourceType: SourceType, stageId: string) => void;
 }
 
-function statusBadgeColor(status: string) {
+function statusBadgeColor(status: MatchStatus) {
   switch (status) {
     case "matched":
       return "border-green-200 bg-green-100 text-green-600";
@@ -20,12 +21,6 @@ function statusBadgeColor(status: string) {
     default:
       return "border-base-300 bg-transparent text-base-content/70";
   }
-}
-
-function typeBadgeColor(sourceType: string) {
-  return sourceType === "snapshot"
-    ? "border-purple-200 bg-purple-100 text-purple-600"
-    : "border-cyan-200 bg-cyan-100 text-cyan-600";
 }
 
 function relativeTime(dateStr: string | null): string {
@@ -285,7 +280,7 @@ export function MatchingResultsTable({ results, runningJobs, onRematch }: Props)
                   <td>
                     <button
                       className="btn btn-primary btn-xs"
-                      onClick={() => onRematch(row.source_type as "snapshot" | "tally", row.source_stage_id)}
+                      onClick={() => onRematch(row.source_type, row.source_stage_id)}
                       disabled={isRunning}
                     >
                       {isRunning ? <span className="loading loading-spinner loading-xs" /> : "Re-match"}
@@ -303,7 +298,7 @@ export function MatchingResultsTable({ results, runningJobs, onRematch }: Props)
           result={selectedResult}
           isRunning={runningJobs.has(selectedResult.source_stage_id)}
           onRematch={() => {
-            onRematch(selectedResult.source_type as "snapshot" | "tally", selectedResult.source_stage_id);
+            onRematch(selectedResult.source_type, selectedResult.source_stage_id);
           }}
           onClose={() => setSelectedResult(null)}
         />

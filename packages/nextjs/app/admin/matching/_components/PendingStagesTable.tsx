@@ -1,6 +1,6 @@
 "use client";
 
-import { PendingStage } from "./types";
+import { PendingStage, typeBadgeColor } from "./types";
 
 interface Props {
   stages: PendingStage[];
@@ -37,9 +37,7 @@ export function PendingStagesTable({ stages, runningJobs, onMatch }: Props) {
               return (
                 <tr key={stage.stageId}>
                   <td>
-                    <span
-                      className={`badge badge-sm ${stage.sourceType === "snapshot" ? "badge-info" : "badge-warning"}`}
-                    >
+                    <span className={`badge badge-sm whitespace-nowrap border ${typeBadgeColor(stage.sourceType)}`}>
                       {stage.sourceType}
                     </span>
                   </td>

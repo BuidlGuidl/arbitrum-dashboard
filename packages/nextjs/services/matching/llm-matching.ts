@@ -55,14 +55,11 @@ Return a JSON object with these fields:
 If no proposal matches, set proposal_id to null, confidence to "none", confidence_score to 0, and explain why in reasoning.`;
 }
 
-async function callGeminiFlash(prompt: string): Promise<LlmMatchResult> {
+async function callGemini(prompt: string): Promise<LlmMatchResult> {
   const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    throw new Error("GEMINI_API_KEY environment variable is not set");
-  }
+  if (!apiKey) throw new Error("GEMINI_API_KEY environment variable is not set");
 
-  const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({
+  const model = new GoogleGenerativeAI(apiKey).getGenerativeModel({
     model: process.env.GEMINI_MODEL || "gemini-2.5-flash-lite",
     generationConfig: {
       temperature: 0.1,
@@ -115,7 +112,7 @@ export async function matchStage(
 
   // Build prompt and call LLM
   const prompt = buildMatchingPrompt(stage, allProposals);
-  const llmResult = await callGeminiFlash(prompt);
+  const llmResult = await callGemini(prompt);
 
   console.log(
     `    → ${llmResult.proposal_id ? "MATCHED" : "NO MATCH"} (score: ${llmResult.confidence_score}, confidence: ${llmResult.confidence})`,
