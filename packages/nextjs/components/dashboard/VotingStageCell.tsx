@@ -13,11 +13,13 @@ type ColorScheme = {
 export const VotingStageCell = ({
   status,
   lastUpdate,
+  link,
   history,
   colorScheme,
 }: {
   status: string | null;
   lastUpdate: string | null;
+  link: string | null;
   history: VotingStageItem[];
   colorScheme: ColorScheme;
 }) => {
@@ -32,11 +34,21 @@ export const VotingStageCell = ({
     <div className="flex flex-col gap-1">
       {/* Latest stage */}
       <div className="flex items-center gap-1.5">
-        <div
-          className={`badge badge-sm whitespace-nowrap border ${colorScheme.border} ${colorScheme.bg} ${colorScheme.text}`}
-        >
-          {status}
-        </div>
+        {link ? (
+          <a href={link} target="_blank" rel="noopener noreferrer">
+            <div
+              className={`badge badge-sm whitespace-nowrap border cursor-pointer hover:brightness-95 ${colorScheme.border} ${colorScheme.bg} ${colorScheme.text}`}
+            >
+              {status}
+            </div>
+          </a>
+        ) : (
+          <div
+            className={`badge badge-sm whitespace-nowrap border ${colorScheme.border} ${colorScheme.bg} ${colorScheme.text}`}
+          >
+            {status}
+          </div>
+        )}
         {hasHistory && (
           <button
             onClick={() => setExpanded(!expanded)}
@@ -71,13 +83,22 @@ export const VotingStageCell = ({
 const HistoryItem = ({ item, colorScheme }: { item: VotingStageItem; colorScheme: ColorScheme }) => {
   return (
     <div className="flex flex-col gap-0.5 opacity-80">
-      {item.displayStatus && (
-        <div
-          className={`badge badge-xs whitespace-nowrap border ${colorScheme.border} ${colorScheme.bg} ${colorScheme.text}`}
-        >
-          {item.displayStatus}
-        </div>
-      )}
+      {item.displayStatus &&
+        (item.link ? (
+          <a href={item.link} target="_blank" rel="noopener noreferrer">
+            <div
+              className={`badge badge-xs whitespace-nowrap border cursor-pointer hover:brightness-95 ${colorScheme.border} ${colorScheme.bg} ${colorScheme.text}`}
+            >
+              {item.displayStatus}
+            </div>
+          </a>
+        ) : (
+          <div
+            className={`badge badge-xs whitespace-nowrap border ${colorScheme.border} ${colorScheme.bg} ${colorScheme.text}`}
+          >
+            {item.displayStatus}
+          </div>
+        ))}
       {item.lastUpdate && <span className="text-[10px] text-base-content/70">{item.lastUpdate}</span>}
       {item.votes && (
         <div className="text-[10px] leading-tight">

@@ -163,6 +163,7 @@ export const ArbitrumGovernanceDashboard = ({ proposals }: { proposals: Dashboar
                     <VotingStageCell
                       status={p.snapshotStatus}
                       lastUpdate={p.snapshotLastUpdate}
+                      link={p.snapshotLink}
                       history={p.snapshotHistory}
                       colorScheme={STAGE_COLORS.snapshot}
                     />
@@ -171,6 +172,7 @@ export const ArbitrumGovernanceDashboard = ({ proposals }: { proposals: Dashboar
                     <VotingStageCell
                       status={p.tallyDisplayStatus}
                       lastUpdate={p.tallyLastUpdate}
+                      link={p.tallyLink}
                       history={p.tallyHistory}
                       colorScheme={STAGE_COLORS.tally}
                     />
