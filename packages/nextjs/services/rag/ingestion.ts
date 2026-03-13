@@ -3,10 +3,10 @@ import { RAG_CONFIG, validateRagConfig } from "./config";
 import { createDocumentsFromForumStage, createSummaryDocument, createVotingDocument } from "./documentBuilder";
 import { cleanupEncoder, estimateTokens } from "./tokens";
 import { IngestionResult, ProposalWithAllData } from "./types";
-import { getVectorStore, initializeVectorStore } from "./vectorStore";
+import { closeVectorStore, getVectorStore, initializeVectorStore } from "./vectorStore";
 import { OpenAI, OpenAIEmbedding } from "@llamaindex/openai";
 import { Document, SentenceSplitter, Settings, TextNode } from "llamaindex";
-import { db } from "~~/services/database/config/postgresClient";
+import { closeDb, db } from "~~/services/database/config/postgresClient";
 import { forumStage, snapshotStage, tallyStage } from "~~/services/database/config/schema";
 import { ForumPost, ForumPostsArraySchema } from "~~/services/forum/types";
 
@@ -170,7 +170,9 @@ async function embedAndIngestNodes(nodes: TextNode[], label: string): Promise<nu
     console.warn(`Skipped ${nodes.length - validNodes.length} nodes with empty content`);
   }
 
-  // Batch insert to avoid PostgreSQL parameter limits
+  // Connect to vector store only now — after all embeddings are done.
+  // This avoids Neon killing the idle connection during the long OpenAI embedding phase.
+  await initializeVectorStore();
   const insertBatchSize = 40;
   const vectorStore = getVectorStore();
 
@@ -211,21 +213,23 @@ export async function runIngestion(options?: { clearFirst?: boolean }): Promise<
     // Configure LlamaIndex
     configureSettings();
 
-    // Initialize vector store
-    await initializeVectorStore();
-
-    const vectorStore = getVectorStore();
-
-    // Optionally clear existing data
+    // Optionally clear existing data (connect, clear, disconnect to avoid idle timeout)
     if (options?.clearFirst) {
+      await initializeVectorStore();
+      const vectorStore = getVectorStore();
       await vectorStore.clearCollection();
       console.log("Cleared existing vector data");
+      await closeVectorStore();
     }
 
     // ========== PHASE 1: Fetch all proposal data ==========
     console.log("\n=== Phase 1: Fetch ===");
     const proposals = await fetchAllProposalData();
     console.log(`Found ${proposals.length} proposals`);
+
+    // Close Drizzle DB pool — not needed after fetch. Prevents Neon idle connection timeout
+    // during the long embedding phase. The vector store uses its own separate connection.
+    await closeDb();
 
     // ========== PHASE 2: Build documents ==========
     console.log("\n=== Phase 2: Build Documents ===");

@@ -81,9 +81,9 @@ The ingestion pipeline runs in 3 phases:
 
 | Phase | What | Key File |
 |-------|------|----------|
-| Fetch | Single DB pass — proposals + all stages + forum posts + body/description fields | `ingestion.ts` |
+| Fetch | Single DB pass — proposals + all stages + forum posts + body/description fields. Closes DB pool after fetch to prevent Neon idle timeout. | `ingestion.ts` |
 | Build | For each proposal → summary doc + voting doc + forum post docs | `documentBuilder.ts` |
-| Chunk & Embed | Unified chunking (SentenceSplitter 512/50) + OpenAI embeddings for ALL document types | `ingestion.ts` |
+| Chunk & Embed | Unified chunking (SentenceSplitter 512/50) + OpenAI embeddings for ALL document types. Uses PGVectorStore's own connection (separate from Drizzle). | `ingestion.ts` |
 
 **3 document types per proposal:**
 

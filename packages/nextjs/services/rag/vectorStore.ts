@@ -2,24 +2,12 @@
 import { RAG_CONFIG } from "./config";
 import { PGVectorStore } from "@llamaindex/postgres";
 
-// Parse connection string to get individual parameters
-function parseConnectionString(connString: string) {
-  const url = new URL(connString);
-  return {
-    host: url.hostname,
-    port: parseInt(url.port) || 5432,
-    database: url.pathname.slice(1), // Remove leading "/"
-    user: url.username,
-    password: url.password,
-    ssl: connString.includes("sslmode=require") ? { rejectUnauthorized: false } : undefined,
-  };
-}
-
 let vectorStoreInstance: PGVectorStore | null = null;
 
 /**
  * Get or create the PGVectorStore instance.
- * Uses connection pooling for efficiency.
+ * Uses connectionString directly (pg.ClientConfig supports it natively).
+ * keepAlive prevents Neon from dropping the connection during long embedding phases.
  */
 export function getVectorStore(): PGVectorStore {
   if (vectorStoreInstance) {
@@ -31,10 +19,11 @@ export function getVectorStore(): PGVectorStore {
     throw new Error("POSTGRES_URL environment variable is required");
   }
 
-  const clientConfig = parseConnectionString(postgresUrl);
-
   vectorStoreInstance = new PGVectorStore({
-    clientConfig,
+    clientConfig: {
+      connectionString: postgresUrl,
+      keepAlive: true,
+    },
     dimensions: RAG_CONFIG.embeddingDimensions,
     tableName: RAG_CONFIG.vectorTableName,
   });
@@ -66,11 +55,14 @@ export async function clearVectorStore(): Promise<void> {
 }
 
 /**
- * Close the vector store connection.
+ * Close the vector store connection and reset the instance.
  */
 export async function closeVectorStore(): Promise<void> {
   if (vectorStoreInstance) {
-    // PGVectorStore doesn't expose a close method, but we reset the instance
+    const db = (vectorStoreInstance as unknown as { db: { close: () => Promise<void> } | null }).db;
+    if (db?.close) {
+      await db.close();
+    }
     vectorStoreInstance = null;
   }
 }
