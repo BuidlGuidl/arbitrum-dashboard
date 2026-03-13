@@ -16,9 +16,10 @@ flowchart TD
   end
 
   subgraph ingestion [Ingestion Pipeline]
-    Fetch[Fetch Proposals + Stages]
-    BuildDoc[Build Canonical Document Text]
-    ForumDocs[Create Per-Post Forum Documents]
+    Fetch[Fetch All Proposal Data]
+    SummaryDoc[Summary Document - title, body, links, status]
+    VotingDoc[Voting Data Document - results, timeline, calls]
+    ForumDocs[Forum Post Documents - 1 per post, skip post 1 if body exists]
     Chunk[SentenceSplitter 512/50]
     Embed[OpenAI Embeddings 1536d]
     VectorStore[(pgvector table)]
@@ -37,9 +38,11 @@ flowchart TD
   SnapshotStage --> Fetch
   TallyStage --> Fetch
 
-  Fetch --> BuildDoc
+  Fetch --> SummaryDoc
+  Fetch --> VotingDoc
   Fetch --> ForumDocs
-  BuildDoc --> Embed
+  SummaryDoc --> Chunk
+  VotingDoc --> Chunk
   ForumDocs --> Chunk
   Chunk --> Embed
   Embed --> VectorStore
@@ -60,7 +63,9 @@ flowchart TD
 |----------|-----|
 | **LlamaIndex + pgvector** | One datastore for relational data and embeddings. No external vector DB. |
 | **OpenAI models** | `text-embedding-3-large` (1536 dims) for embeddings, `gpt-5-mini` for synthesis. |
+| **3 document types** | Summary (body text + metadata), Voting Data (results + timeline), Forum Posts (per-post attribution). |
 | **Per-post forum documents** | Each forum post = separate document. Enables "who said X on proposal Y?" attribution. |
+| **Skip forum post #1** | When Snapshot body or Tally description exists, post #1 is duplicate content — skip to avoid embedding the same ~3K words twice. |
 | **Manual ingestion** | CLI only (`yarn rag:ingest`). Avoids accidental cost spikes. |
 | **IPv4-forced HTTPS** | Bypasses IPv6 timeout issues when fetching from Discourse API. |
 
@@ -72,22 +77,33 @@ flowchart TD
 
 **Entry point:** `yarn rag:ingest` (CLI)
 
-The ingestion pipeline runs in 4 phases:
+The ingestion pipeline runs in 3 phases:
 
 | Phase | What | Key File |
 |-------|------|----------|
-| Metadata docs | Build canonical text from proposal + stage metadata (title, author, status, URLs) | `documentBuilder.ts` |
-| Forum docs | Create per-post documents from `forum_stage.posts_json` with author attribution | `documentBuilder.ts` |
-| Chunking | Split long posts via SentenceSplitter (512 tokens, 50 overlap) | `ingestion.ts` |
-| Embedding | OpenAI embeddings → pgvector storage in batches | `ingestion.ts` |
+| Fetch | Single DB pass — proposals + all stages + forum posts + body/description fields | `ingestion.ts` |
+| Build | For each proposal → summary doc + voting doc + forum post docs | `documentBuilder.ts` |
+| Chunk & Embed | Unified chunking (SentenceSplitter 512/50) + OpenAI embeddings for ALL document types | `ingestion.ts` |
 
-**Canonical document text** includes title, author, category, and metadata from all stages — ensuring the embedding captures the full semantic signal, not just a body field.
+**3 document types per proposal:**
 
-**Per-post documents** carry metadata for attribution:
-- `proposal_id`, `stage`, `post_number`, `author_name`, `author_username`
-- `content_type` ("original" or "comment"), `posted_at`, direct `url`
+| Document | Content | When Created |
+|----------|---------|--------------|
+| **Summary** (1/proposal) | Title, author, category, dates, all stage URLs + cross-links, Snapshot body text (~3K words), Tally description as fallback, status across stages | Always |
+| **Voting Data** (1/proposal) | Snapshot results (`For: 182M votes`), Tally results with voter counts/percentages, executable calls (on-chain targets), events timeline (`Created → Activated → Succeeded → Executed`) | Only if voting data exists |
+| **Forum Posts** (1/post) | Individual post content with author attribution. **Skips post #1** when Snapshot body or Tally description exists (avoids duplicate ~3K word embedding) | Only if forum posts exist |
 
-**Deterministic IDs** (`proposal_id__stage__post_number`) enable upserts — re-ingesting updates existing rows.
+**New schema fields powering richer documents:**
+- `snapshot_stage.body` — full proposal markdown, previously fetched but discarded
+- `tally_stage.description` — full on-chain proposal text, fallback when Snapshot body unavailable
+- `tally_stage.discourse_url` / `snapshot_url` — cross-links from Tally metadata for citation URLs
+- `tally_stage.options.events` — lifecycle array for timeline queries
+
+**All documents** carry metadata including `doc_type` (`"summary"` | `"voting_data"` | `"forum_post"`):
+- `proposal_id`, `stage`, `doc_type`, `status`, `url`, `source_id`
+- Forum-specific: `post_number`, `author_name`, `author_username`, `content_type`, `posted_at`
+
+**Deterministic IDs** (`proposal_id__summary__0`, `proposal_id__voting__0`, `proposal_id__forum__N`) enable upserts — re-ingesting updates existing rows.
 
 ### 2. Forum Content Pipeline
 
@@ -172,9 +188,9 @@ yarn rag:eval --ids query-001       # Run specific query
 | File | Purpose |
 |------|---------|
 | `config.ts` | Models, dimensions, topK, table name, chunk settings |
-| `types.ts` | `RagNodeMetadata`, query/response types, status allowlist |
-| `documentBuilder.ts` | Canonical text + per-post document creation |
-| `ingestion.ts` | 4-phase ingestion pipeline + chunking |
+| `types.ts` | `RagNodeMetadata`, `ProposalWithAllData`, typed options, `RagDocType`, query/response types |
+| `documentBuilder.ts` | 3 document types: summary, voting data, forum posts |
+| `ingestion.ts` | 3-phase ingestion pipeline (fetch → build → chunk & embed) |
 | `retrieval.ts` | Query engine, filters, system prompt, citations |
 | `vectorStore.ts` | PGVectorStore singleton config |
 | `tokens.ts` | tiktoken-based token counting |
@@ -243,6 +259,22 @@ last_fetched_post_count INTEGER     -- Post count at last successful fetch
 fetch_retry_count       INTEGER     -- Retry attempts
 ```
 
+**snapshot_stage extensions** for RAG:
+
+```sql
+body                    TEXT        -- Full proposal markdown (~3K words), primary RAG content source
+```
+
+**tally_stage extensions** for RAG:
+
+```sql
+description             TEXT        -- Full proposal description (~4K words), fallback when Snapshot body unavailable
+discourse_url           TEXT        -- Cross-link to forum discussion from Tally metadata
+snapshot_url            TEXT        -- Cross-link to Snapshot vote from Tally metadata
+-- options JSONB now also includes:
+--   events: [{block: {number, timestamp}, type, txHash, ...}]  -- lifecycle timeline
+```
+
 ---
 
 ## Commands
@@ -260,13 +292,41 @@ yarn rag:eval --ids query-001         # Run specific queries
 yarn rag:eval --top-k 10              # Override retrieval TopK
 ```
 
+### Full local setup (from scratch)
+
+With `yarn dev` running and schema already pushed via `yarn drizzle-kit push`:
+
+```bash
+# 1. Import forum posts (fetches from Discourse API)
+curl -X POST http://localhost:3000/api/import-forum-posts \
+  -H "Authorization: Bearer my-cron-secret"
+
+# 2. Import Snapshot proposals (backfills body)
+curl -X POST http://localhost:3000/api/import-snapshot-proposals \
+  -H "Authorization: Bearer my-cron-secret"
+
+# 3. Import Tally proposals (backfills description, discourse_url, snapshot_url, events)
+curl -X POST http://localhost:3000/api/import-tally-proposals \
+  -H "Authorization: Bearer my-cron-secret"
+
+# 4. Re-match proposals (links forum ↔ snapshot ↔ tally stages)
+yarn import:all-csv
+
+# 5. Re-ingest RAG with richer documents
+yarn rag:ingest --clear
+
+# 6. (Optional) Evaluate quality
+yarn rag:eval
+```
+
+> **Note:** The `CRON_SECRET` value comes from `.env.development`. Steps 1–3 require the Next.js dev server running. Step 4 runs as a standalone CLI script. Step 5 should run after matching since `fetchAllProposalData()` joins stages via `proposal_id`.
+
 ---
 
 ## Known Gaps
 
 - **Skip unchanged:** `content_hash` stored but not used to skip re-embedding unchanged nodes
 - **Reranking:** no reranker yet; retrieve large set then filter for precision
-- **Snapshot/Tally bodies:** only metadata ingested, no body text
 - **Scheduled ingestion:** manual only; cron job for later
 - **Vector index:** no HNSW/IVFFLAT; add when dataset grows
 - **Evaluation:** expected proposal IDs need manual population; only 3/15 queries have reference answers
