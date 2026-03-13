@@ -48,6 +48,12 @@ export async function getForumStageByOriginalId(originalId: string) {
   });
 }
 
+export async function getForumStageByUrl(url: string) {
+  return await db.query.forumStage.findFirst({
+    where: eq(forumStage.url, url),
+  });
+}
+
 /**
  * Update forum content for a specific forum stage.
  * Sets posts_json, fetch status, and retry metadata.
