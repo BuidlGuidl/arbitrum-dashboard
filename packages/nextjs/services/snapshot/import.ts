@@ -64,6 +64,7 @@ const transformProposalData = (proposal: SnapshotProposal) => {
     title: proposal.title,
     author_name: proposal.author,
     url: proposal.link,
+    body: proposal.body || null,
     status: proposal.state,
     voting_start: new Date(proposal.start * 1000),
     voting_end: new Date(proposal.end * 1000),
@@ -80,6 +81,7 @@ type ExistingSnapshotStage = {
   snapshot_id: string | null;
   title: string | null;
   author_name: string | null;
+  body: string | null;
   status: string | null;
   voting_start: Date | null;
   voting_end: Date | null;
@@ -107,6 +109,10 @@ const hasChanges = (existing: ExistingSnapshotStage, proposal: SnapshotProposal)
   const existingVotingStart = existing.voting_start?.getTime() ?? 0;
   const existingVotingEnd = existing.voting_end?.getTime() ?? 0;
 
+  // Body is stored but excluded from change detection — it rarely changes after creation
+  // and including it would cause constant large updates
+  const bodyChanged = !existing.body && !!proposal.body;
+
   return (
     existing.title !== proposal.title ||
     existing.author_name !== proposal.author ||
@@ -114,7 +120,8 @@ const hasChanges = (existing: ExistingSnapshotStage, proposal: SnapshotProposal)
     existing.url !== proposal.link ||
     existingVotingStart !== newVotingStart ||
     existingVotingEnd !== newVotingEnd ||
-    optionsChanged
+    optionsChanged ||
+    bodyChanged
   );
 };
 

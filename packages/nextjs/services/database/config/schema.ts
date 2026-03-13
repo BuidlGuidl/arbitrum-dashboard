@@ -48,6 +48,7 @@ export const snapshotStage = pgTable("snapshot_stage", {
   voting_start: timestamp("voting_start"),
   voting_end: timestamp("voting_end"),
 
+  body: text("body"),
   options: jsonb("options"), // flexible voting options
 
   updated_at: timestamp("updated_at").defaultNow(),
@@ -71,6 +72,9 @@ export const tallyStage = pgTable("tally_stage", {
   start_timestamp: timestamp("start_timestamp"),
   end_timestamp: timestamp("end_timestamp"),
 
+  description: text("description"),
+  discourse_url: text("discourse_url"),
+  snapshot_url: text("snapshot_url"),
   options: jsonb("options"), // flexible voting options
 
   last_activity: timestamp("last_activity"),

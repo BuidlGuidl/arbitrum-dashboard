@@ -2,12 +2,13 @@
 
 export { RAG_CONFIG, validateRagConfig } from "./config";
 export {
-  createDocumentsFromProposal,
-  buildProposalDocumentText,
+  createSummaryDocument,
+  createVotingDocument,
+  createDocumentsFromForumStage,
   computeContentHash,
   generateNodeId,
 } from "./documentBuilder";
-export { runIngestion, fetchProposalsWithStages } from "./ingestion";
+export { runIngestion, fetchAllProposalData } from "./ingestion";
 export { queryRag, searchSimilar } from "./retrieval";
 export { getVectorStore, initializeVectorStore, clearVectorStore, closeVectorStore } from "./vectorStore";
 export type {
@@ -15,9 +16,15 @@ export type {
   RagQueryOutput,
   RagCitation,
   IngestionResult,
-  ProposalWithStages,
+  ProposalWithAllData,
   ProposalStage,
   RagNodeMetadata,
+  RagDocType,
+  SnapshotOptions,
+  TallyOptions,
+  TallyVoteStat,
+  TallyExecCall,
+  TallyEvent,
   AllowedStatus,
 } from "./types";
 export { ALLOWED_STATUSES } from "./types";
