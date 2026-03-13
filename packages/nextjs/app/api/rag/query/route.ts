@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ALLOWED_STATUSES, RagQueryInput, queryRag } from "~~/services/rag";
+import { queryRag } from "~~/services/rag/retrieval";
+import { ALLOWED_STATUSES } from "~~/services/rag/types";
+import type { RagQueryInput } from "~~/services/rag/types";
 
 const ALLOWED_STAGES = ["forum", "snapshot", "tally"] as const;
 
