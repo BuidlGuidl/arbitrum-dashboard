@@ -47,12 +47,7 @@ const STAGE_STYLES: Record<string, { active: string; inactive: string; badge: st
   },
 };
 
-const SUGGESTED_QUERIES = [
-  "What proposals are related to treasury management?",
-  "Show me recently executed constitutional proposals",
-  "Which proposals discuss incentive programs?",
-  "What are the most debated governance changes?",
-];
+const SUGGESTED_QUERIES = ["What are the most debated governance changes?"];
 
 function LoadingSkeleton() {
   return (
