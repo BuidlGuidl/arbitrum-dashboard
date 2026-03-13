@@ -117,7 +117,7 @@ Content is cleaned before embedding:
 - Convert markdown → plain text via `remove-markdown`
 - Normalize whitespace, enforce 50k char limit
 
-**Smart update detection:** content is only re-fetched when `posts_count` changes or `last_posted_at` is newer. Failed fetches use exponential backoff (5min → 80min, max 5 retries).
+**Smart update detection:** content is only re-fetched when `posts_count` changes or `last_posted_at` is newer. Failed fetches are retried on the next import run.
 
 ### 3. Query & Retrieval
 
@@ -256,7 +256,6 @@ posts_json              JSONB       -- Array of ForumPost objects
 content_fetched_at      TIMESTAMP   -- When content was last fetched
 content_fetch_status    VARCHAR(20) -- 'pending' | 'success' | 'failed' | 'partial'
 last_fetched_post_count INTEGER     -- Post count at last successful fetch
-fetch_retry_count       INTEGER     -- Retry attempts
 ```
 
 **snapshot_stage extensions** for RAG:
@@ -294,7 +293,35 @@ yarn rag:eval --top-k 10              # Override retrieval TopK
 
 ### Full local setup (from scratch)
 
-With `yarn dev` running and schema already pushed via `yarn drizzle-kit push`:
+#### Enable pgvector (one-time)
+
+pgvector must be enabled before RAG ingestion can work.
+
+**Option A — Local PostgreSQL (via Drizzle Studio):**
+```bash
+yarn drizzle-kit studio
+```
+Open the Drizzle Studio URL in your browser, go to the SQL runner, and execute:
+```sql
+CREATE EXTENSION IF NOT EXISTS vector;
+```
+
+**Option B — Local PostgreSQL (via CLI):**
+```bash
+yarn rag:setup
+```
+This runs `CREATE EXTENSION IF NOT EXISTS vector` automatically using your `POSTGRES_URL`.
+
+**Option C — Neon (cloud):**
+Go to your Neon project dashboard → **SQL Editor** and run:
+```sql
+CREATE EXTENSION IF NOT EXISTS vector;
+```
+Neon supports pgvector natively, no extra setup needed.
+
+#### Import data & ingest
+
+With `yarn dev` running and schema pushed via `yarn drizzle-kit push`:
 
 ```bash
 # 1. Import forum posts (fetches from Discourse API)

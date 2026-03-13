@@ -11,9 +11,6 @@ export type ForumContentUpdate = {
   content_fetched_at: Date;
   content_fetch_status: "pending" | "success" | "failed" | "partial";
   last_fetched_post_count: number;
-  fetch_error_log: string | null;
-  fetch_retry_count: number;
-  next_fetch_attempt: Date | null;
 };
 
 export type ForumStageWithContent = ForumStageData & {
@@ -66,9 +63,6 @@ export async function updateForumContent(forumStageId: string, content: ForumCon
       content_fetched_at: content.content_fetched_at,
       content_fetch_status: content.content_fetch_status,
       last_fetched_post_count: content.last_fetched_post_count,
-      fetch_error_log: content.fetch_error_log,
-      fetch_retry_count: content.fetch_retry_count,
-      next_fetch_attempt: content.next_fetch_attempt,
       updated_at: new Date(),
     })
     .where(eq(forumStage.id, forumStageId));

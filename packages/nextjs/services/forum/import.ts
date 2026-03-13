@@ -15,8 +15,6 @@ import { createProposal } from "~~/services/database/repositories/proposals";
 // Configuration
 const MAX_PAGES = 100;
 const REQUEST_DELAY = 500;
-const MAX_FETCH_RETRIES = 5;
-const BACKOFF_BASE_MINUTES = 5;
 
 type ForumStage = InferSelectModel<typeof forumStage>;
 
@@ -135,13 +133,9 @@ export function shouldUpdateForumContent(forumStageData: ForumStage, topic: Topi
 
 /**
  * Fetch and store forum content for a specific topic.
- * Handles retries with exponential backoff.
+ * On failure, marks as failed and logs to console (errors are transient, will retry next import run).
  */
-async function fetchAndStoreForumContent(
-  forumStageId: string,
-  topicId: number,
-  existingRetryCount: number = 0,
-): Promise<ContentFetchResult> {
+async function fetchAndStoreForumContent(forumStageId: string, topicId: number): Promise<ContentFetchResult> {
   try {
     const result = await fetchTopicContent(topicId);
     const status: ContentFetchResult["status"] = result.failedBatches > 0 ? "partial" : "success";
@@ -151,32 +145,21 @@ async function fetchAndStoreForumContent(
       content_fetched_at: new Date(),
       content_fetch_status: status,
       last_fetched_post_count: result.fetchedCount,
-      fetch_error_log: result.failedBatches > 0 ? `Failed ${result.failedBatches} batches` : null,
-      fetch_retry_count: 0, // Reset on success
-      next_fetch_attempt: null,
     });
 
     console.log(`✓ Topic ${topicId}: ${result.fetchedCount} posts`);
     return { status, fetchedCount: result.fetchedCount };
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : "Unknown error";
-    const newRetryCount = existingRetryCount + 1;
-
-    // Exponential backoff: 5min, 10min, 20min, 40min, 80min
-    const backoffMinutes = BACKOFF_BASE_MINUTES * Math.pow(2, existingRetryCount);
-    const nextAttempt = new Date(Date.now() + backoffMinutes * 60 * 1000);
 
     await updateForumContent(forumStageId, {
       posts_json: [],
       content_fetched_at: new Date(),
       content_fetch_status: "failed",
       last_fetched_post_count: 0,
-      fetch_error_log: errorMsg,
-      fetch_retry_count: newRetryCount,
-      next_fetch_attempt: nextAttempt,
     });
 
-    console.error(`✗ Topic ${topicId}: ${errorMsg} (retry ${newRetryCount}/${MAX_FETCH_RETRIES})`);
+    console.error(`✗ Topic ${topicId}: ${errorMsg}`);
     return { status: "failed", fetchedCount: 0 };
   }
 }
@@ -240,27 +223,6 @@ const hasChanges = (existing: ExistingForumStage, topic: Topic): boolean => {
     existing.url !== newUrl
   );
 };
-
-/**
- * Check if a failed topic should be skipped based on retry count and backoff schedule.
- */
-function shouldSkipFailedTopic(forumStageData: ForumStage): boolean {
-  if (forumStageData.content_fetch_status !== "failed") {
-    return false;
-  }
-
-  const retryCount = forumStageData.fetch_retry_count || 0;
-  if (retryCount >= MAX_FETCH_RETRIES) {
-    return true; // Dead-lettered
-  }
-
-  const nextAttempt = forumStageData.next_fetch_attempt;
-  if (nextAttempt && new Date() < new Date(nextAttempt)) {
-    return true; // Still in backoff window
-  }
-
-  return false;
-}
 
 /**
  * Main function to import forum posts into the database.
@@ -365,21 +327,9 @@ export async function importForumPosts(options?: { maxPages?: number }): Promise
           continue;
         }
 
-        // Check if we should skip due to dead letter or backoff
-        if (shouldSkipFailedTopic(existingForumStage)) {
-          const reason =
-            (existingForumStage.fetch_retry_count || 0) >= MAX_FETCH_RETRIES ? "max retries exceeded" : "backoff";
-          console.log(`Skipping ${topic.id} - ${reason}`);
-          continue;
-        }
-
-        // Check if content needs updating
+        // Check if content needs updating (failed topics will be retried on next run)
         if (shouldUpdateForumContent(existingForumStage, topic)) {
-          const contentResult = await fetchAndStoreForumContent(
-            existingForumStage.id,
-            topic.id,
-            existingForumStage.fetch_retry_count || 0,
-          );
+          const contentResult = await fetchAndStoreForumContent(existingForumStage.id, topic.id);
           trackContentResult(contentResult);
         }
       }
