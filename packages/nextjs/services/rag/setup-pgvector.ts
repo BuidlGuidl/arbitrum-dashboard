@@ -4,10 +4,27 @@
  *
  * Usage: yarn rag:setup
  */
+import { spawnSync } from "child_process";
 import * as dotenv from "dotenv";
+import { join } from "path";
 import { Pool } from "pg";
+import { PRODUCTION_DATABASE_HOSTNAME } from "~~/services/database/config/postgresClient";
 
 dotenv.config({ path: ".env.development" });
+
+if (process.env.POSTGRES_URL?.includes(PRODUCTION_DATABASE_HOSTNAME)) {
+  process.stdout.write("\n⚠️ You are pointing to the production database. Are you sure you want to proceed? (y/N): ");
+
+  const result = spawnSync("tsx", [join(__dirname, "../../utils/prompt-confirm.ts")], {
+    stdio: "inherit",
+    shell: process.platform === "win32",
+  });
+
+  if (result.status !== 0) {
+    console.log("Aborted.");
+    process.exit(1);
+  }
+}
 
 async function setupPgVector() {
   const postgresUrl = process.env.POSTGRES_URL;

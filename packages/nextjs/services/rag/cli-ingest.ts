@@ -7,11 +7,27 @@
  *   yarn rag:ingest --clear  # Clear and re-ingest all
  */
 import { closeVectorStore, runIngestion } from "./index";
+import { spawnSync } from "child_process";
 import * as dotenv from "dotenv";
-import { closeDb } from "~~/services/database/config/postgresClient";
+import { join } from "path";
+import { PRODUCTION_DATABASE_HOSTNAME, closeDb } from "~~/services/database/config/postgresClient";
 
 dotenv.config({ path: ".env.development" }); // load base env
 dotenv.config({ path: ".env.local", override: true }); // override with local values if present
+
+if (process.env.POSTGRES_URL?.includes(PRODUCTION_DATABASE_HOSTNAME)) {
+  process.stdout.write("\n⚠️ You are pointing to the production database. Are you sure you want to proceed? (y/N): ");
+
+  const result = spawnSync("tsx", [join(__dirname, "../../utils/prompt-confirm.ts")], {
+    stdio: "inherit",
+    shell: process.platform === "win32",
+  });
+
+  if (result.status !== 0) {
+    console.log("Aborted.");
+    process.exit(1);
+  }
+}
 
 async function main() {
   const args = process.argv.slice(2);
