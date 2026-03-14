@@ -2,47 +2,58 @@
 
 import { useMemo, useState } from "react";
 import { StatsCard } from "./StatsCard";
-import { type Proposal, mockProposals } from "./mockData";
+import { VotingStageCell } from "./VotingStageCell";
 import { ArrowTopRightOnSquareIcon, MagnifyingGlassIcon } from "@heroicons/react/24/outline";
+import type { DashboardProposal } from "~~/services/database/repositories/proposals";
 import { STAT_CARD_CONFIG, computeStats } from "~~/utils/governanceStats";
 
-const getStatus = (p: Proposal) => {
-  if (p.tallyStatus === "Executed") return "Executed";
+const getStatus = (p: DashboardProposal) => {
+  if (p.tallyStatus === "Executed" || p.tallyStatus === "Cross-chain Executed") return "Executed";
   if (p.tallyStatus?.startsWith("Pending execution")) return "Pending execution";
   if (p.tallyStatus === "Canceled") return "Canceled";
+  if (p.tallyStatus === "Defeated") return "Defeated";
+  if (p.tallyStatus === "Active") return "Active On-chain Vote";
   if (p.snapshotStatus === "Passed") return "Awaiting On-chain Vote";
   if (p.snapshotStatus === "Failed") return "Failed Off-chain";
+  if (p.snapshotStatus === "Active" || p.snapshotStatus === "Pending") return "Active Off-chain Vote";
   if (p.forumStatus === "Active Discussion") return "In Discussion";
-  return "Draft";
+  return "Unknown";
 };
 
-const getBadgeColor = (p: Proposal) => {
-  if (p.tallyLink) return "border-cyan-200 bg-cyan-100 text-cyan-600";
-  if (p.snapshotLink) return "border-purple-200 bg-purple-100 text-purple-600";
-  return "border-orange-200 bg-orange-100 text-orange-600";
+export const STAGE_COLORS = {
+  snapshot: { border: "border-purple-200", bg: "bg-purple-100", text: "text-purple-600" },
+  tally: { border: "border-cyan-200", bg: "bg-cyan-100", text: "text-cyan-600" },
+  forum: { border: "border-orange-200", bg: "bg-orange-100", text: "text-orange-600" },
+} as const;
+
+const getBadgeColor = (p: DashboardProposal) => {
+  if (p.tallyLink) return `${STAGE_COLORS.tally.border} ${STAGE_COLORS.tally.bg} ${STAGE_COLORS.tally.text}`;
+  if (p.snapshotLink)
+    return `${STAGE_COLORS.snapshot.border} ${STAGE_COLORS.snapshot.bg} ${STAGE_COLORS.snapshot.text}`;
+  return `${STAGE_COLORS.forum.border} ${STAGE_COLORS.forum.bg} ${STAGE_COLORS.forum.text}`;
 };
 
-export const ArbitrumGovernanceDashboard = () => {
+export const ArbitrumGovernanceDashboard = ({ proposals }: { proposals: DashboardProposal[] }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [categoryFilter, setCategoryFilter] = useState("all");
+
   const [showForumOnly, setShowForumOnly] = useState(false);
 
   const filtered = useMemo(
     () =>
-      mockProposals.filter(p => {
+      proposals.filter(p => {
         const search = searchTerm.toLowerCase();
         if (search && !p.title.toLowerCase().includes(search) && !p.author?.toLowerCase().includes(search))
           return false;
         if (statusFilter !== "all" && !getStatus(p).toLowerCase().includes(statusFilter.toLowerCase())) return false;
-        if (categoryFilter !== "all" && p.category?.toLowerCase() !== categoryFilter.toLowerCase()) return false;
+
         if (!showForumOnly && !p.snapshotStatus && !p.tallyStatus) return false;
         return true;
       }),
-    [searchTerm, statusFilter, categoryFilter, showForumOnly],
+    [searchTerm, statusFilter, showForumOnly, proposals],
   );
 
-  const stats = computeStats();
+  const stats = useMemo(() => computeStats(proposals), [proposals]);
 
   return (
     <div className="mx-auto w-full max-w-[1480px] px-5  py-1 lg:py-3 space-y-4">
@@ -78,25 +89,20 @@ export const ArbitrumGovernanceDashboard = () => {
             onChange={e => setStatusFilter(e.target.value)}
           >
             <option value="all">All Statuses</option>
-            <option value="discussion">In Discussion</option>
-            <option value="executed">Executed</option>
-            <option value="pending">Pending</option>
-            <option value="failed">Failed</option>
-            <option value="canceled">Canceled</option>
-          </select>
-          <select
-            className="select select-bordered w-56 max-w-full"
-            value={categoryFilter}
-            onChange={e => setCategoryFilter(e.target.value)}
-          >
-            <option value="all">All Categories</option>
-            <option value="constitutional">Constitutional</option>
-            <option value="non-constitutional">Non-Constitutional</option>
-            <option value="treasury">Treasury</option>
+            <option value="discussion">Forum: In Discussion</option>
+            <option value="active off-chain">Snapshot: Active Off-chain Vote</option>
+            <option value="awaiting">Snapshot: Awaiting On-chain Vote</option>
+            <option value="failed">Snapshot: Failed</option>
+            <option value="executed">Tally: Executed</option>
+            <option value="pending">Tally: Pending execution</option>
+            <option value="defeated">Tally: Defeated</option>
+            <option value="canceled">Tally: Canceled</option>
+            <option value="active on-chain">Tally: Active On-chain Vote</option>
+            <option value="unknown">Unknown</option>
           </select>
         </div>
         <label className="flex items-center gap-2 whitespace-nowrap">
-          <span className="text-sm font-medium">Show forum proposals</span>
+          <span className="text-sm font-medium">Show active forum discussions</span>
           <input
             type="checkbox"
             className="toggle toggle-primary"
@@ -110,7 +116,7 @@ export const ArbitrumGovernanceDashboard = () => {
       <div className="card bg-base-100 border border-base-300 shadow-sm rounded-xl">
         <div className="p-3 lg:p-4 border-b border-base-300 flex items-center justify-end">
           <p className="text-sm text-base-content/60 p-0 m-0">
-            Showing {filtered.length} of {mockProposals.length} proposals
+            Showing {filtered.length} of {proposals.length} proposals
           </p>
         </div>
         <div className="relative w-full overflow-x-auto">
@@ -131,12 +137,19 @@ export const ArbitrumGovernanceDashboard = () => {
                     <span className="text-xs text-base-content/60 font-normal">(Tally)</span>
                   </div>
                 </th>
-                <th>Category</th>
+                <th>Last Activity</th>
                 <th>Votes</th>
                 <th>Links</th>
               </tr>
             </thead>
             <tbody>
+              {filtered.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="text-center py-8 text-base-content/60">
+                    No proposals found
+                  </td>
+                </tr>
+              )}
               {filtered.map(p => (
                 <tr key={p.id}>
                   <td className="max-w-xl">
@@ -147,44 +160,47 @@ export const ArbitrumGovernanceDashboard = () => {
                     <div className={`badge badge-sm whitespace-nowrap border ${getBadgeColor(p)}`}>{getStatus(p)}</div>
                   </td>
                   <td>
-                    {p.snapshotStatus ? (
-                      <div className="flex flex-col gap-1">
-                        <div className="badge badge-sm whitespace-nowrap border border-purple-200 bg-purple-100 text-purple-600">
-                          {p.snapshotStatus}
-                        </div>
-                        {p.snapshotLastUpdate && (
-                          <span className="text-xs text-base-content/60">{p.snapshotLastUpdate}</span>
-                        )}
-                      </div>
-                    ) : (
-                      <span className="text-xs text-base-content/60">Not started</span>
-                    )}
+                    <VotingStageCell
+                      status={p.snapshotStatus}
+                      lastUpdate={p.snapshotLastUpdate}
+                      link={p.snapshotLink}
+                      history={p.snapshotHistory}
+                      colorScheme={STAGE_COLORS.snapshot}
+                    />
                   </td>
                   <td>
-                    {p.tallyStatus ? (
-                      <div className="flex flex-col gap-1">
-                        <div className="badge badge-sm whitespace-nowrap border border-cyan-200 bg-cyan-100 text-cyan-600">
-                          {p.tallyStatus.startsWith("Pending execution")
-                            ? p.tallyStatus.replace("Pending execution (", "").replace(")", "")
-                            : p.tallyStatus}
-                        </div>
-                        {p.tallyLastUpdate && <span className="text-xs text-base-content/60">{p.tallyLastUpdate}</span>}
-                      </div>
-                    ) : (
-                      <span className="text-xs text-base-content/60">Not started</span>
-                    )}
+                    <VotingStageCell
+                      status={p.tallyDisplayStatus}
+                      lastUpdate={p.tallyLastUpdate}
+                      link={p.tallyLink}
+                      history={p.tallyHistory}
+                      colorScheme={STAGE_COLORS.tally}
+                    />
                   </td>
                   <td>
-                    <div className="badge badge-sm whitespace-nowrap border border-base-300 bg-transparent text-base-content/70">
-                      {p.category}
-                    </div>
+                    <span className="text-xs text-base-content/60 whitespace-nowrap">{p.lastActivity ?? "\u2014"}</span>
                   </td>
                   <td>
                     {p.votes ? (
                       <div className="text-xs leading-tight">
-                        <div className="text-green-600 font-semibold">For: {p.votes.for}</div>
-                        <div className="text-red-600 font-semibold">Against: {p.votes.against}</div>
-                        <div className="text-base-content/60">Total: {p.votes.total}</div>
+                        {p.votes.for !== undefined ? (
+                          <>
+                            <div className="text-green-600 font-semibold">For: {p.votes.for}</div>
+                            <div className="text-red-600 font-semibold">Against: {p.votes.against}</div>
+                            <div className="text-base-content/60">Total: {p.votes.total}</div>
+                          </>
+                        ) : p.votes.choices ? (
+                          <div
+                            className="tooltip tooltip-left"
+                            data-tip={p.votes.choices.map(c => `${c.label}: ${c.value}`).join("\n")}
+                          >
+                            {p.votes.choices.map((c, i) => (
+                              <div key={i} className="text-base-content/80">
+                                <span className="font-semibold">{c.shortLabel}:</span> {c.value}
+                              </div>
+                            ))}
+                          </div>
+                        ) : null}
                       </div>
                     ) : (
                       <span className="text-base-content/60 text-xs">No votes yet</span>
