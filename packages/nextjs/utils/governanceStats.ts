@@ -1,5 +1,5 @@
 import { ArrowTrendingUpIcon, CalendarDaysIcon, InboxStackIcon, UsersIcon } from "@heroicons/react/24/outline";
-import { mockProposals } from "~~/components/dashboard/mockData";
+import type { DashboardProposal } from "~~/services/database/repositories/proposals";
 
 export type Stats = {
   discussions: number;
@@ -19,7 +19,7 @@ export type StatCardConfig = {
 export const STAT_CARD_CONFIG: StatCardConfig[] = [
   {
     title: "Active Discussions",
-    sub: "Forum stage proposals",
+    sub: "Forum stage proposals with no offchain or onchain voting stages",
     color: "text-orange-500",
     Icon: UsersIcon,
     key: "discussions",
@@ -47,11 +47,17 @@ export const STAT_CARD_CONFIG: StatCardConfig[] = [
   },
 ];
 
-export const computeStats = (): Stats => ({
-  discussions: mockProposals.filter(p => p.forumStatus === "Active Discussion").length,
-  offchain: mockProposals.filter(p => p.snapshotStatus && !["Passed", "Failed"].includes(p.snapshotStatus)).length,
-  onchain: mockProposals.filter(
-    p => p.tallyStatus && !["Executed", "Canceled"].includes(p.tallyStatus) && !p.tallyStatus.startsWith("Pending"),
+export const computeStats = (proposals: DashboardProposal[]): Stats => ({
+  discussions: proposals.filter(p => p.forumStatus === "Active Discussion").length,
+  offchain: proposals.filter(p => p.snapshotStatus && !["Passed", "Failed"].includes(p.snapshotStatus)).length,
+  onchain: proposals.filter(
+    p =>
+      p.tallyStatus &&
+      !["Executed", "Cross-chain Executed", "Canceled", "Defeated"].includes(p.tallyStatus) &&
+      !p.tallyStatus.startsWith("Pending"),
   ).length,
-  done: mockProposals.filter(p => p.tallyStatus === "Executed" || p.tallyStatus?.startsWith("Pending")).length,
+  done: proposals.filter(
+    p =>
+      p.tallyStatus === "Executed" || p.tallyStatus === "Cross-chain Executed" || p.tallyStatus?.startsWith("Pending"),
+  ).length,
 });
