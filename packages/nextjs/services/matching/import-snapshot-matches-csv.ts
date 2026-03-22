@@ -9,7 +9,11 @@
  */
 import { getForumStageByUrl } from "../database/repositories/forum";
 import { getUnprocessedSnapshotStages, upsertMatchingResult } from "../database/repositories/matching";
-import { getSnapshotStageBySnapshotId, updateSnapshotProposalId } from "../database/repositories/snapshot";
+import {
+  getAllSnapshotStages,
+  getSnapshotStageBySnapshotId,
+  updateSnapshotProposalId,
+} from "../database/repositories/snapshot";
 import { ImportResult, decodeHtmlEntities, parseCsvLine, readFileContent } from "./csv-utils";
 import * as dotenv from "dotenv";
 import * as path from "path";
@@ -239,19 +243,28 @@ export async function importSnapshotMatchesFromCsv(): Promise<ImportResult> {
   }
 
   // Phase 2: LLM no-match entries (canonical_proposal_id === null in JSON, excluded from CSV)
+  const allSnapshotStagesForLookup = await getAllSnapshotStages();
+  const snapshotByTitle = new Map(allSnapshotStagesForLookup.map(s => [s.title?.trim() ?? "", s]));
+
   const llmNoMatchEntries = llmEntries.filter(entry => entry.canonical_proposal_id === null);
   for (const entry of llmNoMatchEntries) {
     try {
+      const stage = snapshotByTitle.get(entry.title?.trim() ?? "");
+      if (!stage) {
+        // Stage doesn't exist in DB — skip silently
+        continue;
+      }
+
       await upsertMatchingResult({
         source_type: "snapshot",
-        source_stage_id: entry.snapshot_id,
+        source_stage_id: stage.id,
         proposal_id: null,
         status: "no_match",
         method: "csv_import",
         confidence: entry.confidence_score ?? null,
         reasoning: entry.reasoning ?? null,
         source_title: entry.title || null,
-        source_url: null,
+        source_url: stage.url || null,
         matched_forum_url: null,
       });
       result.noMatch++;
