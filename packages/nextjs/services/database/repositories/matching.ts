@@ -34,7 +34,8 @@ export async function getUnprocessedSnapshotStages() {
       matchingResult,
       and(eq(matchingResult.source_type, "snapshot"), eq(matchingResult.source_stage_id, snapshotStage.id)),
     )
-    .where(sql`${matchingResult.id} IS NULL`);
+    .where(sql`${matchingResult.id} IS NULL`)
+    .orderBy(desc(snapshotStage.voting_end));
 }
 
 export async function getUnprocessedTallyStages() {
@@ -45,7 +46,8 @@ export async function getUnprocessedTallyStages() {
       matchingResult,
       and(eq(matchingResult.source_type, "tally"), eq(matchingResult.source_stage_id, tallyStage.id)),
     )
-    .where(sql`${matchingResult.id} IS NULL`);
+    .where(sql`${matchingResult.id} IS NULL`)
+    .orderBy(desc(tallyStage.last_activity));
 }
 
 export async function getMatchingResultsBySourceType(sourceType: "snapshot" | "tally") {

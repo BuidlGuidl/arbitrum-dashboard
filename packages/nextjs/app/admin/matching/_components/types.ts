@@ -4,6 +4,7 @@ export interface PendingStage {
   title: string | null;
   authorName: string | null;
   url: string | null;
+  lastActivity: string | null;
 }
 
 export type SourceType = "snapshot" | "tally";
