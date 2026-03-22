@@ -3,12 +3,18 @@ import { getAllProposals } from "../database/repositories/proposals";
 import { getSnapshotStageById, updateSnapshotProposalId } from "../database/repositories/snapshot";
 import { getTallyStageById, updateTallyProposalId } from "../database/repositories/tally";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { db } from "~~/services/database/config/postgresClient";
 
-interface LlmMatchResult {
-  proposal_id: string | null;
-  confidence: string; // "high" | "medium" | "low" | "none"
+interface LlmMatch {
+  proposal_id: string;
+  confidence: string; // "high" | "medium" | "low"
   confidence_score: number; // 0-100
   reasoning: string;
+}
+
+interface LlmMatchResult {
+  matches: LlmMatch[];
+  reasoning: string; // Overall reasoning when no matches found
 }
 
 interface StageInfo {
@@ -26,7 +32,7 @@ function buildMatchingPrompt(
     .map(p => `- ID: ${p.id} | Title: ${p.title} | Author: ${p.author_name ?? "Unknown"}`)
     .join("\n");
 
-  return `You are matching an on-chain governance stage (from Snapshot or Tally) to its canonical forum proposal.
+  return `You are matching an on-chain governance stage (from Snapshot or Tally) to canonical forum proposals.
 
 ## Source Stage to Match
 - Title: ${stage.title ?? "Unknown"}
@@ -37,22 +43,34 @@ function buildMatchingPrompt(
 ${candidateList}
 
 ## Instructions
-1. Find the canonical proposal that this stage belongs to, based on title similarity, author, and context.
+1. Find the canonical proposal(s) that this stage belongs to, based on title similarity, author, and context.
 2. Many proposals go through multiple governance stages (forum → snapshot → tally), so titles may differ slightly.
 3. Common patterns: AIP prefixes may be added/removed, markdown formatting (#) in titles, slight rewording.
-4. Some stages will NOT match any proposal. These include:
+4. **IMPORTANT: Some stages are BUNDLED VOTES** that combine multiple proposals into a single on-chain transaction. In this case, return ALL matching proposals. Look for clues like:
+   - Titles listing multiple actions (e.g., "Remove Cost Cap, Update Executors, Disable Bridge")
+   - Titles mentioning "bundled" or combining multiple AIPs
+5. Some stages will NOT match any proposal. These include:
    - Security Council elections and member changes
    - STIP/LTIPP individual grant distributions (unless there's a matching umbrella proposal)
    - Operational/constitutional votes that predate the forum tracking
    - Proposals from other DAOs or test proposals
 
 Return a JSON object with these fields:
-- "proposal_id": the UUID of the matched canonical proposal, or null if no match
-- "confidence": "high", "medium", "low", or "none"
-- "confidence_score": integer 0-100
-- "reasoning": brief explanation of your matching decision
+- "matches": an array of matched proposals (can be empty, one, or multiple). Each match should have:
+  - "proposal_id": the UUID of the matched canonical proposal
+  - "confidence": "high", "medium", or "low"
+  - "confidence_score": integer 0-100
+  - "reasoning": brief explanation for this specific match
+- "reasoning": overall explanation (used when matches is empty to explain why)
 
-If no proposal matches, set proposal_id to null, confidence to "none", confidence_score to 0, and explain why in reasoning.`;
+Example for a single match:
+{"matches": [{"proposal_id": "abc-123", "confidence": "high", "confidence_score": 95, "reasoning": "Title matches exactly"}], "reasoning": ""}
+
+Example for a bundled vote matching multiple proposals:
+{"matches": [{"proposal_id": "abc-123", "confidence": "high", "confidence_score": 90, "reasoning": "Matches 'Remove Cost Cap'"}, {"proposal_id": "def-456", "confidence": "high", "confidence_score": 90, "reasoning": "Matches 'Update Executors'"}], "reasoning": ""}
+
+Example for no match:
+{"matches": [], "reasoning": "This is a Security Council election with no corresponding forum proposal"}`;
 }
 
 async function callGemini(prompt: string): Promise<LlmMatchResult> {
@@ -73,13 +91,38 @@ async function callGemini(prompt: string): Promise<LlmMatchResult> {
   const raw = JSON.parse(text);
   const parsed = (Array.isArray(raw) ? raw[0] : raw) as LlmMatchResult;
 
-  // Validate required fields
-  if (typeof parsed.confidence_score !== "number" || typeof parsed.reasoning !== "string") {
-    throw new Error(`Invalid LLM response structure: ${text}`);
+  // Normalize: handle old single-match format gracefully
+  if (!Array.isArray(parsed.matches)) {
+    // Old format: { proposal_id, confidence, confidence_score, reasoning }
+    const legacy = raw as {
+      proposal_id: string | null;
+      confidence_score: number;
+      reasoning: string;
+      confidence: string;
+    };
+    if (legacy.proposal_id) {
+      parsed.matches = [
+        {
+          proposal_id: legacy.proposal_id,
+          confidence: legacy.confidence ?? "medium",
+          confidence_score: Math.max(0, Math.min(100, Math.round(legacy.confidence_score))),
+          reasoning: legacy.reasoning ?? "",
+        },
+      ];
+      parsed.reasoning = "";
+    } else {
+      parsed.matches = [];
+      parsed.reasoning = legacy.reasoning ?? "";
+    }
   }
 
-  // Normalize confidence_score to 0-100 range
-  parsed.confidence_score = Math.max(0, Math.min(100, Math.round(parsed.confidence_score)));
+  // Validate and normalize scores
+  for (const match of parsed.matches) {
+    if (typeof match.confidence_score !== "number" || typeof match.reasoning !== "string") {
+      throw new Error(`Invalid LLM match structure: ${text}`);
+    }
+    match.confidence_score = Math.max(0, Math.min(100, Math.round(match.confidence_score)));
+  }
 
   return parsed;
 }
@@ -87,7 +130,7 @@ async function callGemini(prompt: string): Promise<LlmMatchResult> {
 export async function matchStage(
   sourceType: "tally" | "snapshot",
   stageId: string,
-): Promise<{ status: string; proposalId: string | null }> {
+): Promise<{ status: string; proposalId: string | null; matchCount: number }> {
   // Load the stage info
   let stage: StageInfo | undefined;
 
@@ -99,63 +142,83 @@ export async function matchStage(
 
   if (!stage) {
     console.log(`  Stage ${stageId} not found in ${sourceType}_stage table`);
-    return { status: "not_found", proposalId: null };
+    return { status: "not_found", proposalId: null, matchCount: 0 };
   }
 
   console.log(`  Matching: "${stage.title}" (${stageId})`);
 
-  // Load all canonical proposals
+  // Load all canonical proposals + forum URLs
   const allProposals = await getAllProposals();
   if (allProposals.length === 0) {
     throw new Error("No proposals found in database. Cannot match.");
   }
 
+  // Build proposalId → forumUrl map for matched_forum_url
+  const forumRows = await db.query.forumStage.findMany({
+    columns: { proposal_id: true, url: true },
+  });
+  const forumUrlByProposal = new Map<string, string | null>(
+    forumRows.filter(f => f.proposal_id).map(f => [f.proposal_id!, f.url ?? null]),
+  );
+
   // Build prompt and call LLM
   const prompt = buildMatchingPrompt(stage, allProposals);
   const llmResult = await callGemini(prompt);
 
-  console.log(
-    `    → ${llmResult.proposal_id ? "MATCHED" : "NO MATCH"} (score: ${llmResult.confidence_score}, confidence: ${llmResult.confidence})`,
-  );
-  console.log(`    → ${llmResult.reasoning}`);
-
-  if (llmResult.proposal_id) {
-    // Verify the proposal_id actually exists
-    const matchedProposal = allProposals.find(p => p.id === llmResult.proposal_id);
-    if (!matchedProposal) {
-      console.log(
-        `    → WARNING: LLM returned non-existent proposal_id ${llmResult.proposal_id}, treating as no-match`,
-      );
-      llmResult.proposal_id = null;
-      llmResult.confidence = "none";
-      llmResult.confidence_score = 0;
-      llmResult.reasoning += " [proposal_id not found in database - auto-corrected to no-match]";
+  // Validate matched proposal IDs exist
+  const validMatches = llmResult.matches.filter(match => {
+    const exists = allProposals.find(p => p.id === match.proposal_id);
+    if (!exists) {
+      console.log(`    → WARNING: LLM returned non-existent proposal_id ${match.proposal_id}, skipping`);
     }
-  }
-
-  const isMatched = llmResult.proposal_id !== null;
-
-  // Update the stage's proposal_id if matched
-  if (isMatched && llmResult.proposal_id) {
-    if (sourceType === "tally") {
-      await updateTallyProposalId(stageId, llmResult.proposal_id);
-    } else {
-      await updateSnapshotProposalId(stageId, llmResult.proposal_id);
-    }
-  }
-
-  // Record the matching result
-  await upsertMatchingResult({
-    source_type: sourceType,
-    source_stage_id: stageId,
-    proposal_id: llmResult.proposal_id,
-    status: isMatched ? "matched" : "no_match",
-    method: "llm",
-    confidence: llmResult.confidence_score,
-    reasoning: llmResult.reasoning,
-    source_title: stage.title,
-    source_url: stage.url,
+    return !!exists;
   });
 
-  return { status: isMatched ? "matched" : "no_match", proposalId: llmResult.proposal_id };
+  if (validMatches.length === 0) {
+    console.log(`    → NO MATCH (${llmResult.reasoning})`);
+
+    // Record a single no-match result
+    await upsertMatchingResult({
+      source_type: sourceType,
+      source_stage_id: stageId,
+      proposal_id: null,
+      status: "no_match",
+      method: "llm",
+      confidence: 0,
+      reasoning: llmResult.reasoning || "No matching proposal found",
+      source_title: stage.title,
+      source_url: stage.url,
+    });
+
+    return { status: "no_match", proposalId: null, matchCount: 0 };
+  }
+
+  console.log(`    → MATCHED ${validMatches.length} proposal(s)`);
+
+  // Create a matching_result row for each match + update the FK to the first/highest-confidence match
+  const primaryMatch = validMatches.reduce((best, m) => (m.confidence_score > best.confidence_score ? m : best));
+
+  if (sourceType === "tally") {
+    await updateTallyProposalId(stageId, primaryMatch.proposal_id);
+  } else {
+    await updateSnapshotProposalId(stageId, primaryMatch.proposal_id);
+  }
+
+  for (const match of validMatches) {
+    console.log(`      • ${match.proposal_id} (score: ${match.confidence_score}) — ${match.reasoning}`);
+    await upsertMatchingResult({
+      source_type: sourceType,
+      source_stage_id: stageId,
+      proposal_id: match.proposal_id,
+      status: "matched",
+      method: "llm",
+      confidence: match.confidence_score,
+      reasoning: match.reasoning,
+      source_title: stage.title,
+      source_url: stage.url,
+      matched_forum_url: forumUrlByProposal.get(match.proposal_id) ?? null,
+    });
+  }
+
+  return { status: "matched", proposalId: primaryMatch.proposal_id, matchCount: validMatches.length };
 }
