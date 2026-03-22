@@ -9,7 +9,7 @@ export async function upsertMatchingResult(data: Omit<MatchingResultInsert, "id"
     .insert(matchingResult)
     .values(data)
     .onConflictDoUpdate({
-      target: [matchingResult.source_type, matchingResult.source_stage_id],
+      target: [matchingResult.source_type, matchingResult.source_stage_id, matchingResult.proposal_id],
       set: {
         proposal_id: data.proposal_id ?? null,
         status: data.status,

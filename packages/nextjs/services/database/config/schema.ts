@@ -87,7 +87,7 @@ export const matchingResult = pgTable(
     created_at: timestamp("created_at").defaultNow(),
     updated_at: timestamp("updated_at").defaultNow(),
   },
-  table => [unique().on(table.source_type, table.source_stage_id)],
+  table => [unique().on(table.source_type, table.source_stage_id, table.proposal_id)],
 );
 
 // Users table for admin management
