@@ -3,7 +3,9 @@ import { getAllProposals } from "../database/repositories/proposals";
 import { getSnapshotStageById, updateSnapshotProposalId } from "../database/repositories/snapshot";
 import { getTallyStageById, updateTallyProposalId } from "../database/repositories/tally";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { and, eq } from "drizzle-orm";
 import { db } from "~~/services/database/config/postgresClient";
+import { matchingResult } from "~~/services/database/config/schema";
 
 interface LlmMatch {
   proposal_id: string;
@@ -173,6 +175,12 @@ export async function matchStage(
     }
     return !!exists;
   });
+
+  // Mark any previous results for this stage as overwritten
+  await db
+    .update(matchingResult)
+    .set({ status: "overwritten", updated_at: new Date() })
+    .where(and(eq(matchingResult.source_type, sourceType), eq(matchingResult.source_stage_id, stageId)));
 
   if (validMatches.length === 0) {
     console.log(`    → NO MATCH (${llmResult.reasoning})`);
