@@ -26,10 +26,9 @@ export const forumStage = pgTable("forum_stage", {
   updated_at: timestamp("updated_at").defaultNow(),
 });
 
-// Snapshot stage (nullable foreign key; linked later)
+// Snapshot stage
 export const snapshotStage = pgTable("snapshot_stage", {
   id: uuid("id").defaultRandom().primaryKey(),
-  proposal_id: uuid("proposal_id").references(() => proposals.id, { onDelete: "set null" }),
 
   snapshot_id: text("snapshot_id").unique(),
   title: text("title"),
@@ -45,10 +44,9 @@ export const snapshotStage = pgTable("snapshot_stage", {
   updated_at: timestamp("updated_at").defaultNow(),
 });
 
-// Tally stage (nullable foreign key; linked later)
+// Tally stage
 export const tallyStage = pgTable("tally_stage", {
   id: uuid("id").defaultRandom().primaryKey(),
-  proposal_id: uuid("proposal_id").references(() => proposals.id, { onDelete: "set null" }),
 
   tally_proposal_id: text("tally_proposal_id").unique(),
   title: text("title"),
@@ -99,27 +97,11 @@ export const users = pgTable("user", {
 
 export const proposalsRelations = relations(proposals, ({ many }) => ({
   forumStages: many(forumStage),
-  snapshotStages: many(snapshotStage),
-  tallyStages: many(tallyStage),
 }));
 
 export const forumStageRelations = relations(forumStage, ({ one }) => ({
   proposal: one(proposals, {
     fields: [forumStage.proposal_id],
-    references: [proposals.id],
-  }),
-}));
-
-export const snapshotStageRelations = relations(snapshotStage, ({ one }) => ({
-  proposal: one(proposals, {
-    fields: [snapshotStage.proposal_id],
-    references: [proposals.id],
-  }),
-}));
-
-export const tallyStageRelations = relations(tallyStage, ({ one }) => ({
-  proposal: one(proposals, {
-    fields: [tallyStage.proposal_id],
     references: [proposals.id],
   }),
 }));

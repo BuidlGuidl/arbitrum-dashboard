@@ -1,7 +1,7 @@
 import { upsertMatchingResult } from "../database/repositories/matching";
 import { getAllProposals } from "../database/repositories/proposals";
-import { getSnapshotStageById, updateSnapshotProposalId } from "../database/repositories/snapshot";
-import { getTallyStageById, updateTallyProposalId } from "../database/repositories/tally";
+import { getSnapshotStageById } from "../database/repositories/snapshot";
+import { getTallyStageById } from "../database/repositories/tally";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { and, eq } from "drizzle-orm";
 import { db } from "~~/services/database/config/postgresClient";
@@ -203,14 +203,8 @@ export async function matchStage(
 
   console.log(`    → MATCHED ${validMatches.length} proposal(s)`);
 
-  // Create a matching_result row for each match + update the FK to the first/highest-confidence match
+  // Create a matching_result row for each match
   const primaryMatch = validMatches.reduce((best, m) => (m.confidence_score > best.confidence_score ? m : best));
-
-  if (sourceType === "tally") {
-    await updateTallyProposalId(stageId, primaryMatch.proposal_id);
-  } else {
-    await updateSnapshotProposalId(stageId, primaryMatch.proposal_id);
-  }
 
   for (const match of validMatches) {
     console.log(`      • ${match.proposal_id} (score: ${match.confidence_score}) — ${match.reasoning}`);

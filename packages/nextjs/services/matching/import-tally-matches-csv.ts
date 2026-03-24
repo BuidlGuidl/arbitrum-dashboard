@@ -8,7 +8,7 @@
  */
 import { getForumStageByUrl } from "../database/repositories/forum";
 import { getUnprocessedTallyStages, upsertMatchingResult } from "../database/repositories/matching";
-import { getAllTallyStages, getTallyStageByOnchainId, updateTallyProposalId } from "../database/repositories/tally";
+import { getAllTallyStages, getTallyStageByOnchainId } from "../database/repositories/tally";
 import { ImportResult, decodeHtmlEntities, parseCsvLine, readFileContent } from "./csv-utils";
 import * as dotenv from "dotenv";
 import * as path from "path";
@@ -192,32 +192,10 @@ export async function importTallyMatchesFromCsv(): Promise<ImportResult> {
         continue;
       }
 
-      const proposalId = forum.proposal_id;
-
-      // Check if already linked to the same proposal
-      if (existingTally.proposal_id === proposalId) {
-        result.alreadyLinked++;
-        await upsertMatchingResult({
-          source_type: "tally",
-          source_stage_id: existingTally.id,
-          proposal_id: proposalId,
-          status: "matched",
-          method: isManualOverride ? "manual_override" : "csv_import",
-          confidence: !isManualOverride ? (llmData?.confidence_score ?? null) : null,
-          reasoning: !isManualOverride ? (llmData?.reasoning ?? null) : null,
-          source_title: row.tally_title || null,
-          source_url: row.tally_url || null,
-          matched_forum_url: forumUrl,
-        });
-        continue;
-      }
-
-      await updateTallyProposalId(existingTally.id, proposalId);
-
       await upsertMatchingResult({
         source_type: "tally",
         source_stage_id: existingTally.id,
-        proposal_id: proposalId,
+        proposal_id: forum.proposal_id,
         status: "matched",
         method: isManualOverride ? "manual_override" : "csv_import",
         confidence: !isManualOverride ? (llmData?.confidence_score ?? null) : null,
@@ -228,7 +206,7 @@ export async function importTallyMatchesFromCsv(): Promise<ImportResult> {
       });
 
       const manualNote = isManualOverride ? " [MANUAL]" : "";
-      console.log(`Updated: "${row.tally_title?.slice(0, 50)}..." -> ${proposalId}${manualNote}`);
+      console.log(`Updated: "${row.tally_title?.slice(0, 50)}..." -> ${forum.proposal_id}${manualNote}`);
       result.updated++;
     } catch (error) {
       const errorMessage = `Error processing "${row.tally_title}": ${error}`;

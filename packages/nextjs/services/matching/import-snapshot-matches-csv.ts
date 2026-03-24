@@ -9,11 +9,7 @@
  */
 import { getForumStageByUrl } from "../database/repositories/forum";
 import { getUnprocessedSnapshotStages, upsertMatchingResult } from "../database/repositories/matching";
-import {
-  getAllSnapshotStages,
-  getSnapshotStageBySnapshotId,
-  updateSnapshotProposalId,
-} from "../database/repositories/snapshot";
+import { getAllSnapshotStages, getSnapshotStageBySnapshotId } from "../database/repositories/snapshot";
 import { ImportResult, decodeHtmlEntities, parseCsvLine, readFileContent } from "./csv-utils";
 import * as dotenv from "dotenv";
 import * as path from "path";
@@ -197,32 +193,10 @@ export async function importSnapshotMatchesFromCsv(): Promise<ImportResult> {
         continue;
       }
 
-      const proposalId = forum.proposal_id;
-
-      // Check if already linked to the same proposal
-      if (existingSnapshot.proposal_id === proposalId) {
-        result.alreadyLinked++;
-        await upsertMatchingResult({
-          source_type: "snapshot",
-          source_stage_id: existingSnapshot.id,
-          proposal_id: proposalId,
-          status: "matched",
-          method: isManualOverride ? "manual_override" : "csv_import",
-          confidence: !isManualOverride ? (llmData?.confidence_score ?? null) : null,
-          reasoning: !isManualOverride ? (llmData?.reasoning ?? null) : null,
-          source_title: row.snapshot_title || null,
-          source_url: row.snapshot_url || null,
-          matched_forum_url: forumUrl,
-        });
-        continue;
-      }
-
-      await updateSnapshotProposalId(existingSnapshot.id, proposalId);
-
       await upsertMatchingResult({
         source_type: "snapshot",
         source_stage_id: existingSnapshot.id,
-        proposal_id: proposalId,
+        proposal_id: forum.proposal_id,
         status: "matched",
         method: isManualOverride ? "manual_override" : "csv_import",
         confidence: !isManualOverride ? (llmData?.confidence_score ?? null) : null,
@@ -233,7 +207,7 @@ export async function importSnapshotMatchesFromCsv(): Promise<ImportResult> {
       });
 
       const manualNote = isManualOverride ? " [MANUAL]" : "";
-      console.log(`Updated: "${row.snapshot_title?.slice(0, 50)}..." -> ${proposalId}${manualNote}`);
+      console.log(`Updated: "${row.snapshot_title?.slice(0, 50)}..." -> ${forum.proposal_id}${manualNote}`);
       result.updated++;
     } catch (error) {
       const errorMessage = `Error processing "${row.snapshot_title}": ${error}`;
