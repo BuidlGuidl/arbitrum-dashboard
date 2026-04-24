@@ -203,7 +203,12 @@ export async function matchStage(
 
   console.log(`    → MATCHED ${validMatches.length} proposal(s)`);
 
-  // Create a matching_result row for each match
+  // TODO: gate status on confidence_score. Every validated match is
+  // currently written as "matched" regardless of score, so low-confidence or
+  // hallucinated bundled matches land directly on the homepage. Proposed:
+  // introduce MIN_MATCH_CONFIDENCE and demote below-threshold matches to
+  // status: "pending_review" (which the dashboard query already filters out).
+  // confidence is already stored on the row — just need to act on it.
   const primaryMatch = validMatches.reduce((best, m) => (m.confidence_score > best.confidence_score ? m : best));
 
   for (const match of validMatches) {
