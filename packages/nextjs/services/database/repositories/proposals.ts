@@ -1,5 +1,5 @@
-import { proposals } from "../config/schema";
-import { InferInsertModel } from "drizzle-orm";
+import { matchingResult, proposals, snapshotStage, tallyStage } from "../config/schema";
+import { InferInsertModel, and, desc, eq } from "drizzle-orm";
 import { db } from "~~/services/database/config/postgresClient";
 import {
   type SnapshotOptions,
@@ -41,41 +41,59 @@ function formatDisplayStatus(status: string | null): string | null {
 }
 
 export async function getDashboardProposals() {
-  const rows = await db.query.proposals.findMany({
-    with: {
-      forumStages: {
-        orderBy: (forumStage, { desc }) => [desc(forumStage.last_message_at)],
-        limit: 1,
+  const [proposalRows, snapshotLinks, tallyLinks] = await Promise.all([
+    db.query.proposals.findMany({
+      with: {
+        forumStages: {
+          orderBy: (forumStage, { desc }) => [desc(forumStage.last_message_at)],
+          limit: 1,
+        },
       },
-      snapshotStages: {
-        orderBy: (snapshotStage, { desc }) => [desc(snapshotStage.voting_end)],
-      },
-      tallyStages: {
-        orderBy: (tallyStage, { desc }) => [desc(tallyStage.last_activity)],
-      },
-    },
-    orderBy: (proposals, { desc }) => [desc(proposals.updated_at)],
-  });
+    }),
+    db
+      .select({ proposalId: matchingResult.proposal_id, stage: snapshotStage })
+      .from(matchingResult)
+      .innerJoin(snapshotStage, eq(matchingResult.source_stage_id, snapshotStage.id))
+      .where(and(eq(matchingResult.source_type, "snapshot"), eq(matchingResult.status, "matched")))
+      .orderBy(desc(snapshotStage.voting_end)),
+    db
+      .select({ proposalId: matchingResult.proposal_id, stage: tallyStage })
+      .from(matchingResult)
+      .innerJoin(tallyStage, eq(matchingResult.source_stage_id, tallyStage.id))
+      .where(and(eq(matchingResult.source_type, "tally"), eq(matchingResult.status, "matched")))
+      .orderBy(desc(tallyStage.last_activity)),
+  ]);
 
-  // Sort by most relevant stage date: tally > snapshot > forum
-  rows.sort((a, b) => {
-    const dateA =
-      a.tallyStages[0]?.last_activity ?? a.snapshotStages[0]?.voting_end ?? a.forumStages[0]?.last_message_at;
-    const dateB =
-      b.tallyStages[0]?.last_activity ?? b.snapshotStages[0]?.voting_end ?? b.forumStages[0]?.last_message_at;
-    return (dateB?.getTime() ?? 0) - (dateA?.getTime() ?? 0);
-  });
+  const snapshotsByProposal = new Map<string, (typeof snapshotLinks)[number]["stage"][]>();
+  for (const link of snapshotLinks) {
+    if (!link.proposalId) continue;
+    const arr = snapshotsByProposal.get(link.proposalId) ?? [];
+    arr.push(link.stage);
+    snapshotsByProposal.set(link.proposalId, arr);
+  }
 
-  return rows.map(row => {
+  const tallyByProposal = new Map<string, (typeof tallyLinks)[number]["stage"][]>();
+  for (const link of tallyLinks) {
+    if (!link.proposalId) continue;
+    const arr = tallyByProposal.get(link.proposalId) ?? [];
+    arr.push(link.stage);
+    tallyByProposal.set(link.proposalId, arr);
+  }
+
+  const sortKeyByProposal = new Map<string, number>();
+
+  const assembled = proposalRows.map(row => {
     const forum = row.forumStages[0] ?? null;
-    const snapshot = row.snapshotStages[0] ?? null;
-    const tally = row.tallyStages[0] ?? null;
+    const snapshotStages = snapshotsByProposal.get(row.id) ?? [];
+    const tallyStages = tallyByProposal.get(row.id) ?? [];
+
+    const snapshot = snapshotStages[0] ?? null;
+    const tally = tallyStages[0] ?? null;
 
     const snapshotOptions = snapshot?.options as SnapshotOptions | null;
     const tallyOptions = tally?.options as TallyOptions | null;
 
-    // Map older snapshot stages (skip index 0, which is the latest)
-    const snapshotHistory: VotingStageItem[] = row.snapshotStages.slice(1).map(s => {
+    const snapshotHistory: VotingStageItem[] = snapshotStages.slice(1).map(s => {
       const opts = s.options as SnapshotOptions | null;
       const status = resolveSnapshotResult(s.status ?? null, opts);
       return {
@@ -88,8 +106,7 @@ export async function getDashboardProposals() {
       };
     });
 
-    // Map older tally stages (skip index 0, which is the latest)
-    const tallyHistory: VotingStageItem[] = row.tallyStages.slice(1).map(t => {
+    const tallyHistory: VotingStageItem[] = tallyStages.slice(1).map(t => {
       const opts = t.options as TallyOptions | null;
       const status = mapTallyStatus(t.status ?? null, t.substatus ?? null);
       return {
@@ -104,6 +121,7 @@ export async function getDashboardProposals() {
     });
 
     const lastActivityDate = tally?.last_activity ?? snapshot?.voting_end ?? forum?.last_message_at ?? null;
+    sortKeyByProposal.set(row.id, lastActivityDate?.getTime() ?? 0);
 
     return {
       id: row.id,
@@ -126,6 +144,10 @@ export async function getDashboardProposals() {
       tallyHistory,
     };
   });
+
+  assembled.sort((a, b) => (sortKeyByProposal.get(b.id) ?? 0) - (sortKeyByProposal.get(a.id) ?? 0));
+
+  return assembled;
 }
 
 export type DashboardProposal = Awaited<ReturnType<typeof getDashboardProposals>>[number];

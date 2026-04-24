@@ -1,6 +1,5 @@
 import { tallyStage } from "../config/schema";
-import { InferInsertModel } from "drizzle-orm";
-import { eq, isNull } from "drizzle-orm";
+import { InferInsertModel, eq } from "drizzle-orm";
 import { db } from "~~/services/database/config/postgresClient";
 
 type TallyStageData = InferInsertModel<typeof tallyStage>;
@@ -38,12 +37,6 @@ export async function updateTallyStageByTallyProposalId(tallyProposalId: string,
   return updated;
 }
 
-export async function getAllTallyStagesWithoutProposal() {
-  return await db.query.tallyStage.findMany({
-    where: isNull(tallyStage.proposal_id),
-  });
-}
-
 export async function getAllTallyStages() {
   return await db.query.tallyStage.findMany();
 }
@@ -52,15 +45,6 @@ export async function getTallyStageById(id: string) {
   return await db.query.tallyStage.findFirst({
     where: eq(tallyStage.id, id),
   });
-}
-
-export async function updateTallyProposalId(tallyStageId: string, proposalId: string) {
-  const [updated] = await db
-    .update(tallyStage)
-    .set({ proposal_id: proposalId, updated_at: new Date() })
-    .where(eq(tallyStage.id, tallyStageId))
-    .returning();
-  return updated;
 }
 
 export async function getTallyStageByOnchainId(onchainId: string) {

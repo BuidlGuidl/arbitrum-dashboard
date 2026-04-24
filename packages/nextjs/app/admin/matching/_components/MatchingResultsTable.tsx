@@ -72,7 +72,7 @@ function ResultDetailModal({ result, onClose }: { result: MatchingResultRow; onC
               href={result.source_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="link link-primary text-sm mt-1 block break-all"
+              className="text-sm mt-1 block break-all text-sky-400 hover:text-sky-300 underline"
             >
               {result.source_url}
             </a>
@@ -111,7 +111,7 @@ function ResultDetailModal({ result, onClose }: { result: MatchingResultRow; onC
               href={result.matched_forum_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="link link-secondary text-sm break-all"
+              className="text-sm break-all text-sky-400 hover:text-sky-300 underline"
             >
               {result.matched_forum_url}
             </a>
