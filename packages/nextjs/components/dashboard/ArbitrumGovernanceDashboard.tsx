@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { StatsCard } from "./StatsCard";
 import { VotingStageCell } from "./VotingStageCell";
 import { ArrowTopRightOnSquareIcon, MagnifyingGlassIcon } from "@heroicons/react/24/outline";
+import { ArbitrumLogo } from "~~/components/assets/ArbitrumLogo";
 import type { DashboardProposal } from "~~/services/database/repositories/proposals";
 import { STAT_CARD_CONFIG, computeStats } from "~~/utils/governanceStats";
 
@@ -21,9 +22,21 @@ const getStatus = (p: DashboardProposal) => {
 };
 
 export const STAGE_COLORS = {
-  snapshot: { border: "border-purple-200", bg: "bg-purple-100", text: "text-purple-600" },
-  tally: { border: "border-cyan-200", bg: "bg-cyan-100", text: "text-cyan-600" },
-  forum: { border: "border-orange-200", bg: "bg-orange-100", text: "text-orange-600" },
+  snapshot: {
+    border: "border-purple-500/40",
+    bg: "bg-purple-500/15",
+    text: "text-purple-700 dark:text-purple-300 font-bold",
+  },
+  tally: {
+    border: "border-cyan-500/40",
+    bg: "bg-cyan-500/15",
+    text: "text-cyan-700 dark:text-cyan-300 font-bold",
+  },
+  forum: {
+    border: "border-orange-500/40",
+    bg: "bg-orange-500/15",
+    text: "text-orange-700 dark:text-orange-300 font-bold",
+  },
 } as const;
 
 const getBadgeColor = (p: DashboardProposal) => {
@@ -56,11 +69,14 @@ export const ArbitrumGovernanceDashboard = ({ proposals }: { proposals: Dashboar
   const stats = useMemo(() => computeStats(proposals), [proposals]);
 
   return (
-    <div className="mx-auto w-full max-w-[1480px] px-5  py-1 lg:py-3 space-y-4">
+    <div className="mx-auto w-full max-w-[1480px] px-5 py-4 lg:py-8 space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold mb-2">Arbitrum DAO Governance</h1>
-        <p className="text-base-content/60">Unified proposal tracking across all governance stages</p>
+        <div className="flex items-center gap-4 mb-3">
+          <ArbitrumLogo size={56} className="h-12 w-12 lg:h-14 lg:w-14" />
+          <h1 className="text-4xl lg:text-5xl font-bold tracking-tight m-0">Arbitrum DAO Governance Tracking</h1>
+        </div>
+        <p className="text-base-content/60 text-lg">Unified proposal tracking across all governance stages</p>
       </div>
 
       {/* Stats */}
@@ -105,7 +121,7 @@ export const ArbitrumGovernanceDashboard = ({ proposals }: { proposals: Dashboar
           <span className="text-sm font-medium">Show active forum discussions</span>
           <input
             type="checkbox"
-            className="toggle toggle-primary"
+            className="toggle toggle-accent"
             checked={showForumOnly}
             onChange={() => setShowForumOnly(!showForumOnly)}
           />
@@ -119,27 +135,31 @@ export const ArbitrumGovernanceDashboard = ({ proposals }: { proposals: Dashboar
             Showing {filtered.length} of {proposals.length} proposals
           </p>
         </div>
-        <div className="relative w-full overflow-x-auto">
-          <table className="table table-sm w-full min-w-[1100px]">
-            <thead>
-              <tr>
-                <th className="w-[30%]">Proposal</th>
-                <th>Status</th>
-                <th>
-                  <div className="flex flex-col">
+        <div className="relative w-full">
+          <table className="proposals-table table w-full table-fixed [&_th]:py-5 [&_td]:py-6 [&_th]:px-3 [&_td]:px-3">
+            <thead className="bg-base-200/60">
+              <tr className="text-xs uppercase tracking-wider text-base-content/60">
+                <th className="w-[26%]">Proposal</th>
+                <th className="w-[14%]">Status</th>
+                <th className="w-[10%]">
+                  <div className="flex flex-col gap-0.5">
                     <span>Offchain</span>
-                    <span className="text-xs text-base-content/60 font-normal">(Snapshot)</span>
+                    <span className="text-[10px] normal-case tracking-normal text-base-content/50 font-normal">
+                      Snapshot
+                    </span>
                   </div>
                 </th>
-                <th>
-                  <div className="flex flex-col">
+                <th className="w-[10%]">
+                  <div className="flex flex-col gap-0.5">
                     <span>Onchain</span>
-                    <span className="text-xs text-base-content/60 font-normal">(Tally)</span>
+                    <span className="text-[10px] normal-case tracking-normal text-base-content/50 font-normal">
+                      Tally
+                    </span>
                   </div>
                 </th>
-                <th>Last Activity</th>
-                <th>Votes</th>
-                <th>Links</th>
+                <th className="w-[9%]">Last Activity</th>
+                <th className="w-[16%]">Votes</th>
+                <th className="w-[10%]">Links</th>
               </tr>
             </thead>
             <tbody>
@@ -151,13 +171,18 @@ export const ArbitrumGovernanceDashboard = ({ proposals }: { proposals: Dashboar
                 </tr>
               )}
               {filtered.map(p => (
-                <tr key={p.id}>
-                  <td className="max-w-xl">
-                    <div className="font-medium text-sm mb-1 truncate">{p.title}</div>
-                    {p.author && <div className="text-xs text-base-content/60">by {p.author}</div>}
+                <tr key={p.id} className="border-b border-base-300/60">
+                  <td className="align-top">
+                    <div
+                      className="font-semibold text-sm mb-1 overflow-hidden"
+                      style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}
+                    >
+                      {p.title}
+                    </div>
+                    {p.author && <div className="text-xs text-base-content/60 truncate">by {p.author}</div>}
                   </td>
                   <td>
-                    <div className={`badge badge-sm whitespace-nowrap border ${getBadgeColor(p)}`}>{getStatus(p)}</div>
+                    <div className={`badge badge-md whitespace-nowrap border ${getBadgeColor(p)}`}>{getStatus(p)}</div>
                   </td>
                   <td>
                     <VotingStageCell
@@ -185,9 +210,19 @@ export const ArbitrumGovernanceDashboard = ({ proposals }: { proposals: Dashboar
                       <div className="text-xs leading-tight">
                         {p.votes.for !== undefined ? (
                           <>
-                            <div className="text-green-600 font-semibold">For: {p.votes.for}</div>
-                            <div className="text-red-600 font-semibold">Against: {p.votes.against}</div>
-                            <div className="text-base-content/60">Total: {p.votes.total}</div>
+                            <div className="grid grid-cols-[auto_1fr] gap-x-3">
+                              <span className="text-green-600 font-semibold">For</span>
+                              <span className="text-green-600 font-semibold text-right tabular-nums">
+                                {p.votes.for}
+                              </span>
+                              <span className="text-red-600 font-semibold">Against</span>
+                              <span className="text-red-600 font-semibold text-right tabular-nums">
+                                {p.votes.against}
+                              </span>
+                              <span className="text-base-content/60">Total</span>
+                              <span className="text-base-content/60 text-right tabular-nums">{p.votes.total}</span>
+                            </div>
+                            <VoteProgressBar forRaw={p.votes.forRaw} againstRaw={p.votes.againstRaw} />
                           </>
                         ) : p.votes.choices ? (
                           <div
@@ -209,12 +244,29 @@ export const ArbitrumGovernanceDashboard = ({ proposals }: { proposals: Dashboar
                   <td>
                     <div className="flex flex-col gap-1">
                       {p.forumLink && (
-                        <Link href={p.forumLink} label="Forum" color="text-orange-500" bg="bg-orange-100" />
+                        <Link
+                          href={p.forumLink}
+                          label="Forum"
+                          color="text-orange-700 dark:text-orange-300"
+                          bg="bg-orange-500/15"
+                        />
                       )}
                       {p.snapshotLink && (
-                        <Link href={p.snapshotLink} label="Snapshot" color="text-purple-500" bg="bg-purple-100" />
+                        <Link
+                          href={p.snapshotLink}
+                          label="Snapshot"
+                          color="text-purple-700 dark:text-purple-300"
+                          bg="bg-purple-500/15"
+                        />
                       )}
-                      {p.tallyLink && <Link href={p.tallyLink} label="Tally" color="text-cyan-500" bg="bg-cyan-100" />}
+                      {p.tallyLink && (
+                        <Link
+                          href={p.tallyLink}
+                          label="Tally"
+                          color="text-cyan-700 dark:text-cyan-300"
+                          bg="bg-cyan-500/15"
+                        />
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -223,6 +275,20 @@ export const ArbitrumGovernanceDashboard = ({ proposals }: { proposals: Dashboar
           </table>
         </div>
       </div>
+    </div>
+  );
+};
+
+const VoteProgressBar = ({ forRaw, againstRaw }: { forRaw?: number; againstRaw?: number }) => {
+  const f = forRaw ?? 0;
+  const a = againstRaw ?? 0;
+  const total = f + a;
+  if (total <= 0) return null;
+  const forPct = (f / total) * 100;
+  return (
+    <div className="mt-2 flex h-[3px] w-full overflow-hidden rounded-full bg-base-300/60">
+      <div className="bg-green-500" style={{ width: `${forPct}%` }} />
+      <div className="bg-red-500" style={{ width: `${100 - forPct}%` }} />
     </div>
   );
 };
@@ -237,6 +303,6 @@ const Link = ({ href, label, color, bg }: { href: string; label: string; color: 
     <div className={`w-4 h-4 rounded ${bg} flex items-center justify-center`}>
       <ArrowTopRightOnSquareIcon className="w-2.5 h-2.5" />
     </div>
-    <span className="text-xs">{label}</span>
+    <span className="text-xs font-semibold">{label}</span>
   </a>
 );

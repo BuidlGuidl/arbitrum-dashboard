@@ -87,6 +87,8 @@ export function resolveSnapshotResult(status: string | null, options: SnapshotOp
 export type VoteInfo = {
   for?: string;
   against?: string;
+  forRaw?: number;
+  againstRaw?: number;
   choices?: { label: string; shortLabel: string; value: string }[];
   total: string;
 };
@@ -114,7 +116,13 @@ export function extractTallyVotes(options: TallyOptions | null): VoteInfo | unde
   const againstCount = againstStat ? formatVoteCount(againstStat.votesCount) : "0";
   const totalRaw = options.voteStats.reduce((sum, s) => sum + Number(s.votesCount), 0);
 
-  return { for: forCount, against: againstCount, total: formatVoteCount(totalRaw.toString()) };
+  return {
+    for: forCount,
+    against: againstCount,
+    forRaw: forStat ? Number(forStat.votesCount) : 0,
+    againstRaw: againstStat ? Number(againstStat.votesCount) : 0,
+    total: formatVoteCount(totalRaw.toString()),
+  };
 }
 
 export function extractSnapshotVotes(options: SnapshotOptions | null): VoteInfo | undefined {
@@ -129,6 +137,8 @@ export function extractSnapshotVotes(options: SnapshotOptions | null): VoteInfo 
     return {
       for: formatScore(options.scores[forIdx] ?? 0),
       against: formatScore(options.scores[againstIdx] ?? 0),
+      forRaw: options.scores[forIdx] ?? 0,
+      againstRaw: options.scores[againstIdx] ?? 0,
       total: formatScore(total),
     };
   }
