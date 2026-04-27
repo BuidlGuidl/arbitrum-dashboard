@@ -17,6 +17,7 @@ export async function GET() {
         title: r.snapshotStage.title,
         authorName: r.snapshotStage.author_name,
         url: r.snapshotStage.url,
+        lastActivity: r.snapshotStage.voting_end?.toISOString() ?? null,
       })),
       ...tallyRows.map(r => ({
         sourceType: "tally" as const,
@@ -24,8 +25,16 @@ export async function GET() {
         title: r.tallyStage.title,
         authorName: r.tallyStage.author_name,
         url: r.tallyStage.url,
+        lastActivity: r.tallyStage.last_activity?.toISOString() ?? null,
       })),
     ];
+
+    // Sort the combined list by last activity (most recent first)
+    pending.sort((a, b) => {
+      const dateA = a.lastActivity ? new Date(a.lastActivity).getTime() : 0;
+      const dateB = b.lastActivity ? new Date(b.lastActivity).getTime() : 0;
+      return dateB - dateA;
+    });
 
     return NextResponse.json(pending);
   } catch (error) {

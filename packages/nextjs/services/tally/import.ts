@@ -247,7 +247,6 @@ const transformProposalData = (proposal: TallyProposal) => {
         ? new Date(proposal.start.timestamp)
         : new Date(proposal.createdAt),
     updated_at: new Date(),
-    proposal_id: null,
   };
 };
 
@@ -364,9 +363,8 @@ const createNewTallyStage = async (proposal: TallyProposal) => {
 const updateExistingTallyStage = async (proposal: TallyProposal) => {
   const tallyData = transformProposalData(proposal);
 
-  // Remove fields that shouldn't be updated
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { tally_proposal_id, proposal_id, ...updates } = tallyData;
+  const { tally_proposal_id, ...updates } = tallyData;
 
   const tallyStage = await updateTallyStageByTallyProposalId(proposal.id, updates);
   console.log("Updated tally stage:", tallyStage.title);

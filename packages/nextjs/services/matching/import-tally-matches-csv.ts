@@ -8,7 +8,7 @@
  */
 import { getForumStageByUrl } from "../database/repositories/forum";
 import { getUnprocessedTallyStages, upsertMatchingResult } from "../database/repositories/matching";
-import { getTallyStageByOnchainId, updateTallyProposalId } from "../database/repositories/tally";
+import { getAllTallyStages, getTallyStageByOnchainId } from "../database/repositories/tally";
 import { ImportResult, decodeHtmlEntities, parseCsvLine, readFileContent } from "./csv-utils";
 import * as dotenv from "dotenv";
 import * as path from "path";
@@ -192,32 +192,10 @@ export async function importTallyMatchesFromCsv(): Promise<ImportResult> {
         continue;
       }
 
-      const proposalId = forum.proposal_id;
-
-      // Check if already linked to the same proposal
-      if (existingTally.proposal_id === proposalId) {
-        result.alreadyLinked++;
-        await upsertMatchingResult({
-          source_type: "tally",
-          source_stage_id: existingTally.id,
-          proposal_id: proposalId,
-          status: "matched",
-          method: isManualOverride ? "manual_override" : "csv_import",
-          confidence: !isManualOverride ? (llmData?.confidence_score ?? null) : null,
-          reasoning: !isManualOverride ? (llmData?.reasoning ?? null) : null,
-          source_title: row.tally_title || null,
-          source_url: row.tally_url || null,
-          matched_forum_url: forumUrl,
-        });
-        continue;
-      }
-
-      await updateTallyProposalId(existingTally.id, proposalId);
-
       await upsertMatchingResult({
         source_type: "tally",
         source_stage_id: existingTally.id,
-        proposal_id: proposalId,
+        proposal_id: forum.proposal_id,
         status: "matched",
         method: isManualOverride ? "manual_override" : "csv_import",
         confidence: !isManualOverride ? (llmData?.confidence_score ?? null) : null,
@@ -228,7 +206,7 @@ export async function importTallyMatchesFromCsv(): Promise<ImportResult> {
       });
 
       const manualNote = isManualOverride ? " [MANUAL]" : "";
-      console.log(`Updated: "${row.tally_title?.slice(0, 50)}..." -> ${proposalId}${manualNote}`);
+      console.log(`Updated: "${row.tally_title?.slice(0, 50)}..." -> ${forum.proposal_id}${manualNote}`);
       result.updated++;
     } catch (error) {
       const errorMessage = `Error processing "${row.tally_title}": ${error}`;
@@ -238,19 +216,28 @@ export async function importTallyMatchesFromCsv(): Promise<ImportResult> {
   }
 
   // Phase 2: LLM no-match entries (canonical_proposal_id === null in JSON, excluded from CSV)
+  const allTallyStagesForLookup = await getAllTallyStages();
+  const tallyByTitle = new Map(allTallyStagesForLookup.map(s => [s.title?.trim() ?? "", s]));
+
   const llmNoMatchEntries = llmEntries.filter(entry => entry.canonical_proposal_id === null);
   for (const entry of llmNoMatchEntries) {
     try {
+      const stage = tallyByTitle.get(entry.title?.trim() ?? "");
+      if (!stage) {
+        // Stage doesn't exist in DB — skip silently
+        continue;
+      }
+
       await upsertMatchingResult({
         source_type: "tally",
-        source_stage_id: entry.tally_id,
+        source_stage_id: stage.id,
         proposal_id: null,
         status: "no_match",
         method: "csv_import",
         confidence: entry.confidence_score ?? null,
         reasoning: entry.reasoning ?? null,
         source_title: entry.title || null,
-        source_url: null,
+        source_url: stage.url || null,
         matched_forum_url: null,
       });
       result.noMatch++;

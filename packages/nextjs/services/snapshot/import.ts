@@ -73,7 +73,6 @@ const transformProposalData = (proposal: SnapshotProposal) => {
       scores: proposal.scores,
     },
     updated_at: new Date(),
-    proposal_id: null,
   };
 };
 
@@ -141,9 +140,8 @@ const createNewSnapshotStage = async (proposal: SnapshotProposal) => {
 const updateExistingSnapshotStage = async (proposal: SnapshotProposal) => {
   const snapshotData = transformProposalData(proposal);
 
-  // Remove fields that shouldn't be updated
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { snapshot_id, proposal_id, ...updates } = snapshotData;
+  const { snapshot_id, ...updates } = snapshotData;
 
   const snapshotStage = await updateSnapshotStageBySnapshotId(proposal.id, updates);
   console.log("Updated snapshot stage:", snapshotStage.title);

@@ -68,7 +68,6 @@ async function seed() {
     });
 
     await db.insert(snapshotStage).values({
-      proposal_id: proposal1.id,
       snapshot_id: "snap-001",
       title: proposal1.title,
       author_name: proposal1.author_name,
@@ -83,7 +82,6 @@ async function seed() {
     });
 
     await db.insert(tallyStage).values({
-      proposal_id: proposal1.id,
       tally_proposal_id: "tally-001",
       title: proposal1.title,
       author_name: proposal1.author_name,
@@ -109,7 +107,6 @@ async function seed() {
     });
 
     await db.insert(snapshotStage).values({
-      proposal_id: proposal2.id,
       snapshot_id: "snap-002",
       title: proposal2.title,
       author_name: proposal2.author_name,
