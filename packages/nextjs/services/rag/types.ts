@@ -63,6 +63,11 @@ export type RagNodeMetadata = {
   posted_at?: string;
   total_chunks?: number;
   reply_to_post_number?: number;
+  // Display + recency hints set during ingestion (kept on every node so they
+  // survive chunking and are available to citation rendering and prompt synthesis)
+  proposal_title?: string;
+  forum_topic_title?: string;
+  last_activity_at?: string | null;
   // Allow additional fields for LlamaIndex compatibility
   [key: string]: unknown;
 };

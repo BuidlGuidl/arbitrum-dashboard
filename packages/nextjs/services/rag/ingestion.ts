@@ -5,9 +5,10 @@ import { cleanupEncoder, estimateTokens } from "./tokens";
 import { IngestionResult, ProposalWithAllData } from "./types";
 import { closeVectorStore, getVectorStore, initializeVectorStore } from "./vectorStore";
 import { OpenAI, OpenAIEmbedding } from "@llamaindex/openai";
+import { and, desc, eq } from "drizzle-orm";
 import { Document, SentenceSplitter, Settings, TextNode } from "llamaindex";
 import { closeDb, db } from "~~/services/database/config/postgresClient";
-import { forumStage, snapshotStage, tallyStage } from "~~/services/database/config/schema";
+import { forumStage, matchingResult, snapshotStage, tallyStage } from "~~/services/database/config/schema";
 import { ForumPost, ForumPostsArraySchema } from "~~/services/forum/types";
 
 // Chunking configuration
@@ -16,29 +17,60 @@ const CHUNK_OVERLAP = 50; // tokens
 
 /**
  * Fetch all proposal data in a single pass: proposals + all stages + forum posts + body/description fields.
- * Replaces the previous fetchProposalsWithStages() + fetchProposalsWithForumContent() split.
+ *
+ * Stages are sourced from `matching_result` (the canonical link table after PR #28),
+ * mirroring `getDashboardProposals`. The previous implementation joined via the
+ * `proposal_id` FK on stage tables, which can be stale or unset for newly matched
+ * stages, and which collapses bundled votes into a single mapping. Picking the
+ * most-recent matched stage per proposal keeps RAG answers consistent with what
+ * users see on the homepage.
  */
 export async function fetchAllProposalData(): Promise<ProposalWithAllData[]> {
-  const proposalRows = await db.query.proposals.findMany();
-
-  // Fetch all stages in parallel
-  const [forumRows, snapshotRows, tallyRows] = await Promise.all([
+  const [proposalRows, forumRows, snapshotLinks, tallyLinks] = await Promise.all([
+    db.query.proposals.findMany(),
     db.select().from(forumStage),
-    db.select().from(snapshotStage),
-    db.select().from(tallyStage),
+    db
+      .select({ proposalId: matchingResult.proposal_id, stage: snapshotStage })
+      .from(matchingResult)
+      .innerJoin(snapshotStage, eq(matchingResult.source_stage_id, snapshotStage.id))
+      .where(and(eq(matchingResult.source_type, "snapshot"), eq(matchingResult.status, "matched")))
+      .orderBy(desc(snapshotStage.voting_end)),
+    db
+      .select({ proposalId: matchingResult.proposal_id, stage: tallyStage })
+      .from(matchingResult)
+      .innerJoin(tallyStage, eq(matchingResult.source_stage_id, tallyStage.id))
+      .where(and(eq(matchingResult.source_type, "tally"), eq(matchingResult.status, "matched")))
+      .orderBy(desc(tallyStage.last_activity)),
   ]);
 
-  // Create lookup maps
-  const forumMap = new Map(forumRows.filter(f => f.proposal_id).map(f => [f.proposal_id!, f]));
-  const snapshotMap = new Map(snapshotRows.filter(s => s.proposal_id).map(s => [s.proposal_id!, s]));
-  const tallyMap = new Map(tallyRows.filter(t => t.proposal_id).map(t => [t.proposal_id!, t]));
+  // Forum is still 1:1 via FK (no matching_result equivalent yet); pick the
+  // freshest topic per proposal in case of duplicates.
+  const forumByProposal = new Map<string, (typeof forumRows)[number]>();
+  for (const f of forumRows) {
+    if (!f.proposal_id) continue;
+    const existing = forumByProposal.get(f.proposal_id);
+    const fAt = f.last_message_at?.getTime() ?? 0;
+    const eAt = existing?.last_message_at?.getTime() ?? 0;
+    if (!existing || fAt > eAt) forumByProposal.set(f.proposal_id, f);
+  }
+
+  // First link wins because the joins are pre-sorted by recency descending.
+  const snapshotByProposal = new Map<string, (typeof snapshotLinks)[number]["stage"]>();
+  for (const link of snapshotLinks) {
+    if (!link.proposalId || snapshotByProposal.has(link.proposalId)) continue;
+    snapshotByProposal.set(link.proposalId, link.stage);
+  }
+  const tallyByProposal = new Map<string, (typeof tallyLinks)[number]["stage"]>();
+  for (const link of tallyLinks) {
+    if (!link.proposalId || tallyByProposal.has(link.proposalId)) continue;
+    tallyByProposal.set(link.proposalId, link.stage);
+  }
 
   return proposalRows.map(proposal => {
-    const forum = forumMap.get(proposal.id);
-    const snapshot = snapshotMap.get(proposal.id);
-    const tally = tallyMap.get(proposal.id);
+    const forum = forumByProposal.get(proposal.id);
+    const snapshot = snapshotByProposal.get(proposal.id);
+    const tally = tallyByProposal.get(proposal.id);
 
-    // Parse forum posts if available
     let forumPosts: ProposalWithAllData["forum"] = null;
     if (forum) {
       let posts: ForumPost[] = [];

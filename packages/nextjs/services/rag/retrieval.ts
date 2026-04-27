@@ -9,10 +9,19 @@ import { MetadataMode, Settings, VectorStoreIndex } from "llamaindex";
 const ALLOWED_STAGES: ProposalStage[] = ["forum", "snapshot", "tally"];
 
 /**
- * System prompt for the RAG chatbot.
- * Includes guardrails against prompt injection.
+ * Build the system prompt for the RAG chatbot.
+ *
+ * Today's date is injected at query time so the model can resolve relative
+ * temporal language ("recent", "current", "hottest", "latest"). Each retrieved
+ * node also carries a `last_activity_at` metadata field — the prompt tells the
+ * model to prefer fresher sources when the question implies recency, which
+ * fixes Pablo's "hottest topic returned 2023 proposals" report.
  */
-const SYSTEM_PROMPT = `You are a helpful assistant that answers questions about Arbitrum DAO governance proposals.
+function buildSystemPrompt(): string {
+  const today = new Date().toISOString().split("T")[0];
+  return `You are a helpful assistant that answers questions about Arbitrum DAO governance proposals.
+
+Today's date is ${today}.
 
 IMPORTANT RULES:
 1. Only answer questions based on the provided context about proposals.
@@ -22,7 +31,13 @@ IMPORTANT RULES:
 5. Do not make up information not present in the context.
 6. Be concise and factual.
 
+TEMPORAL REASONING:
+- When the user asks about "recent", "current", "latest", "hottest", "active", "ongoing", or "newest" proposals, prefer sources with the most recent dates and disregard older sources unless they are still on-chain or in active discussion.
+- When the user asks about a specific year or time window, only use sources from that window.
+- If retrieved sources span very different time periods, surface the date range explicitly in your answer.
+
 When referencing proposals, include their titles and relevant stage information (Forum, Snapshot, Tally).`;
+}
 
 /**
  * Configure LlamaIndex Settings with OpenAI models.
@@ -119,7 +134,7 @@ function extractCitations(
       stage,
       url: (metadata.url as string) || "",
       snippet: nodeWithScore.node.text.slice(0, 200) + (nodeWithScore.node.text.length > 200 ? "..." : ""),
-      title: extractTitleFromText(nodeWithScore.node.text),
+      title: resolveCitationTitle(metadata, nodeWithScore.node.text),
     });
   }
 
@@ -127,9 +142,23 @@ function extractCitations(
 }
 
 /**
- * Extract title from document text (assumes markdown format with # Title).
+ * Resolve a human-readable title for a citation.
+ *
+ * Prefers metadata stamped at ingestion time (survives SentenceSplitter chunking)
+ * and falls back to a markdown-header regex over the chunk text. Without the
+ * metadata path, forum posts and chunks 2..N of summary docs return no title at
+ * all, which is why Pablo saw missing source labels in the response panel.
  */
-function extractTitleFromText(text: string): string | undefined {
+function resolveCitationTitle(metadata: Record<string, unknown>, text: string): string | undefined {
+  const proposalTitle = typeof metadata.proposal_title === "string" ? metadata.proposal_title : undefined;
+  const topicTitle = typeof metadata.forum_topic_title === "string" ? metadata.forum_topic_title : undefined;
+
+  if (proposalTitle && topicTitle && topicTitle !== proposalTitle) {
+    return `${proposalTitle} — ${topicTitle}`;
+  }
+  if (proposalTitle) return proposalTitle;
+  if (topicTitle) return topicTitle;
+
   const match = text.match(/^#\s+(.+)$/m);
   return match ? match[1] : undefined;
 }
@@ -168,7 +197,7 @@ export async function queryRag(input: RagQueryInput): Promise<RagQueryOutput> {
   });
 
   // Build the augmented query with system prompt
-  const augmentedQuery = `${SYSTEM_PROMPT}
+  const augmentedQuery = `${buildSystemPrompt()}
 
 Question: ${input.query}`;
 

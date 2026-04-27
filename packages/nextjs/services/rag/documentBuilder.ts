@@ -37,6 +37,29 @@ function formatDate(date: Date | string | null): string | null {
 }
 
 /**
+ * Most recent timestamp across all stages of a proposal.
+ * Used for recency-aware retrieval — stored as ISO string in node metadata so
+ * the synthesis LLM can reason about which sources are fresh vs stale.
+ */
+function getLastActivityAt(proposal: ProposalWithAllData): string | null {
+  const candidates: (Date | string | null | undefined)[] = [
+    proposal.tally?.end_timestamp,
+    proposal.tally?.start_timestamp,
+    proposal.snapshot?.voting_end,
+    proposal.snapshot?.voting_start,
+    proposal.forum?.last_message_at,
+    proposal.created_at,
+  ];
+  let max = 0;
+  for (const c of candidates) {
+    if (!c) continue;
+    const t = (typeof c === "string" ? new Date(c) : c).getTime();
+    if (Number.isFinite(t) && t > max) max = t;
+  }
+  return max > 0 ? new Date(max).toISOString() : null;
+}
+
+/**
  * Build the Summary Document text for a proposal.
  * Contains: title, author, category, dates, all stage URLs, cross-links,
  * Snapshot body text, Tally description, and status across stages.
@@ -259,6 +282,8 @@ export function createSummaryDocument(proposal: ProposalWithAllData): Document {
     source_id: sourceId,
     chunk_index: 0,
     content_hash: contentHash,
+    proposal_title: proposal.title,
+    last_activity_at: getLastActivityAt(proposal),
   };
 
   return new Document({
@@ -291,6 +316,8 @@ export function createVotingDocument(proposal: ProposalWithAllData): Document | 
     source_id: sourceId,
     chunk_index: 0,
     content_hash: contentHash,
+    proposal_title: proposal.title,
+    last_activity_at: getLastActivityAt(proposal),
   };
 
   return new Document({
@@ -315,6 +342,7 @@ export function createDocumentsFromForumStage(proposal: ProposalWithAllData): Do
 
   // Check if we have rich body text from other stages
   const hasBodyText = !!proposal.snapshot?.body || !!proposal.tally?.description;
+  const lastActivityAt = getLastActivityAt(proposal);
 
   for (const post of proposal.forum.posts) {
     // Skip deleted posts
@@ -343,6 +371,9 @@ export function createDocumentsFromForumStage(proposal: ProposalWithAllData): Do
       content_type: post.post_number === 1 ? "original" : "comment",
       posted_at: post.posted_at,
       reply_to_post_number: post.reply_to_post_number,
+      proposal_title: proposal.title,
+      forum_topic_title: proposal.forum.title || undefined,
+      last_activity_at: lastActivityAt,
     };
 
     documents.push(
