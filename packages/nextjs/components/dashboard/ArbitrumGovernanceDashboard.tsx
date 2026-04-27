@@ -135,8 +135,8 @@ export const ArbitrumGovernanceDashboard = ({ proposals }: { proposals: Dashboar
             Showing {filtered.length} of {proposals.length} proposals
           </p>
         </div>
-        <div className="relative w-full">
-          <table className="proposals-table table w-full table-fixed [&_th]:py-5 [&_td]:py-6 [&_th]:px-3 [&_td]:px-3">
+        <div className="relative w-full overflow-x-auto">
+          <table className="proposals-table table w-full table-fixed min-w-[1100px] [&_th]:py-5 [&_td]:py-6 [&_th]:px-3 [&_td]:px-3">
             <thead className="bg-base-200/60">
               <tr className="text-xs uppercase tracking-wider text-base-content/60">
                 <th className="w-[26%]">Proposal</th>
