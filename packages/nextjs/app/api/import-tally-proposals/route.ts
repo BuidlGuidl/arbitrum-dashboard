@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { importTallyProposals } from "~~/services/tally/import";
 
-export async function POST(request: NextRequest) {
+export const maxDuration = 300;
+
+export async function GET(request: NextRequest) {
   try {
-    // Verify the request is from Vercel Cron using the CRON_SECRET
     const authHeader = request.headers.get("authorization");
     if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
       console.error("Unauthorized attempt to access import-tally-proposals endpoint");
