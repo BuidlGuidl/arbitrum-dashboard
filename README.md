@@ -18,6 +18,7 @@ Keys you'll need to set:
 
 - `TALLY_API_KEY` — get one from https://www.tally.xyz/
 - `GEMINI_API_KEY` — get one from https://aistudio.google.com/apikey
+- `GEMINI_MODEL` — optional, defaults to `gemini-2.5-flash-lite`. Override to use a stronger model on ambiguous matches (see the LLM Matching section below)
 - `POSTGRES_URL` — your local Postgres connection string (the `docker compose up` flow below sets this up)
 - `CRON_SECRET` — bearer token used to authenticate cron-triggered import endpoints. Generate one with:
 
