@@ -69,7 +69,7 @@ export const ArbitrumGovernanceDashboard = ({ proposals }: { proposals: Dashboar
   const stats = useMemo(() => computeStats(proposals), [proposals]);
 
   return (
-    <div className="mx-auto w-full max-w-[1480px] px-5 py-4 lg:py-8 space-y-6">
+    <div className="mx-auto w-full max-w-[1480px] px-5 pt-8 pb-4 lg:py-8 space-y-6">
       {/* Header */}
       <div>
         <div className="flex items-center gap-4 mb-3">
@@ -182,7 +182,11 @@ export const ArbitrumGovernanceDashboard = ({ proposals }: { proposals: Dashboar
                     {p.author && <div className="text-xs text-base-content/60 truncate">by {p.author}</div>}
                   </td>
                   <td>
-                    <div className={`badge badge-md whitespace-nowrap border ${getBadgeColor(p)}`}>{getStatus(p)}</div>
+                    <div
+                      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs leading-tight sm:whitespace-nowrap ${getBadgeColor(p)}`}
+                    >
+                      {getStatus(p)}
+                    </div>
                   </td>
                   <td>
                     <VotingStageCell
