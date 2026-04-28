@@ -173,113 +173,117 @@ export function MatchingResultsTable({ results, runningJobs, onRematch }: Props)
   }
 
   return (
-    <div className="card bg-base-100 border border-base-300 shadow-sm rounded-xl">
-      <div className="p-3 lg:p-4 border-b border-base-300 flex flex-wrap items-center gap-2">
-        <input
-          type="text"
-          placeholder="Search by title…"
-          className="input input-bordered input-sm w-56"
-          value={searchTerm}
-          onChange={e => setSearchTerm(e.target.value)}
-        />
-        <select
-          className="select select-bordered select-sm"
-          value={statusFilter}
-          onChange={e => setStatusFilter(e.target.value)}
-        >
-          <option value="">All Statuses</option>
-          <option value="matched">matched</option>
-          <option value="no_match">no_match</option>
-          <option value="pending_review">pending_review</option>
-        </select>
-        <select
-          className="select select-bordered select-sm"
-          value={sourceTypeFilter}
-          onChange={e => setSourceTypeFilter(e.target.value)}
-        >
-          <option value="">All Sources</option>
-          <option value="snapshot">snapshot</option>
-          <option value="tally">tally</option>
-        </select>
-        <select
-          className="select select-bordered select-sm"
-          value={methodFilter}
-          onChange={e => setMethodFilter(e.target.value)}
-        >
-          <option value="">All Methods</option>
-          <option value="llm">llm</option>
-          <option value="csv_import">csv_import</option>
-          <option value="manual_override">manual_override</option>
-        </select>
-        <p className="text-sm text-base-content/60 p-0 m-0 ml-auto">
-          Showing {filtered.length} of {results.length} result(s)
-        </p>
-      </div>
-      <div className="relative w-full overflow-x-auto">
-        <table className="table table-sm w-full">
-          <thead>
-            <tr>
-              <th>Source Title</th>
-              <th>Status</th>
-              <th className="hidden xl:table-cell">Confidence</th>
-              <th className="hidden xl:table-cell">Method</th>
-              <th className="hidden lg:table-cell">Updated</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map(row => {
-              const isRunning = runningJobs.has(row.source_stage_id);
-              return (
-                <tr key={row.id}>
-                  <td className="max-w-[200px] lg:max-w-sm xl:max-w-xl">
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={`badge badge-sm whitespace-nowrap border ${typeBadgeColor(row.source_type)} shrink-0`}
-                      >
-                        {row.source_type}
+    <>
+      <div className="card bg-base-100 border border-base-300 shadow-sm rounded-xl">
+        <div className="p-3 lg:p-4 border-b border-base-300 flex flex-wrap items-center gap-2">
+          <input
+            type="text"
+            placeholder="Search by title…"
+            className="input input-bordered input-sm w-56"
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+          />
+          <select
+            className="select select-bordered select-sm"
+            value={statusFilter}
+            onChange={e => setStatusFilter(e.target.value)}
+          >
+            <option value="">All Statuses</option>
+            <option value="matched">matched</option>
+            <option value="no_match">no_match</option>
+            <option value="pending_review">pending_review</option>
+          </select>
+          <select
+            className="select select-bordered select-sm"
+            value={sourceTypeFilter}
+            onChange={e => setSourceTypeFilter(e.target.value)}
+          >
+            <option value="">All Sources</option>
+            <option value="snapshot">snapshot</option>
+            <option value="tally">tally</option>
+          </select>
+          <select
+            className="select select-bordered select-sm"
+            value={methodFilter}
+            onChange={e => setMethodFilter(e.target.value)}
+          >
+            <option value="">All Methods</option>
+            <option value="llm">llm</option>
+            <option value="csv_import">csv_import</option>
+            <option value="manual_override">manual_override</option>
+          </select>
+          <p className="text-sm text-base-content/60 p-0 m-0 ml-auto">
+            Showing {filtered.length} of {results.length} result(s)
+          </p>
+        </div>
+        <div className="relative w-full overflow-x-auto">
+          <table className="table table-sm w-full">
+            <thead>
+              <tr>
+                <th>Source Title</th>
+                <th>Status</th>
+                <th className="hidden xl:table-cell">Confidence</th>
+                <th className="hidden xl:table-cell">Method</th>
+                <th className="hidden lg:table-cell">Updated</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map(row => {
+                const isRunning = runningJobs.has(row.source_stage_id);
+                return (
+                  <tr key={row.id}>
+                    <td className="max-w-[200px] lg:max-w-sm xl:max-w-xl">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`badge badge-sm whitespace-nowrap border ${typeBadgeColor(row.source_type)} shrink-0`}
+                        >
+                          {row.source_type}
+                        </span>
+                        <span className="font-medium text-sm truncate" title={row.source_title ?? ""}>
+                          {row.source_title ?? "—"}
+                        </span>
+                      </div>
+                    </td>
+                    <td>
+                      <div className="flex items-center gap-2">
+                        <span className={`badge badge-sm whitespace-nowrap border ${statusBadgeColor(row.status)}`}>
+                          {row.status}
+                        </span>
+                        <button className="link text-xs" onClick={() => setSelectedResult(row)}>
+                          Details
+                        </button>
+                      </div>
+                    </td>
+                    <td className="hidden xl:table-cell font-mono text-sm">{row.confidence ?? "—"}</td>
+                    <td className="hidden xl:table-cell">
+                      <span className="badge badge-sm whitespace-nowrap border border-base-300 bg-transparent text-base-content/70">
+                        {row.method}
                       </span>
-                      <span className="font-medium text-sm truncate" title={row.source_title ?? ""}>
-                        {row.source_title ?? "—"}
-                      </span>
-                    </div>
-                  </td>
-                  <td>
-                    <div className="flex items-center gap-2">
-                      <span className={`badge badge-sm whitespace-nowrap border ${statusBadgeColor(row.status)}`}>
-                        {row.status}
-                      </span>
-                      <button className="link text-xs" onClick={() => setSelectedResult(row)}>
-                        Details
-                      </button>
-                    </div>
-                  </td>
-                  <td className="hidden xl:table-cell font-mono text-sm">{row.confidence ?? "—"}</td>
-                  <td className="hidden xl:table-cell">
-                    <span className="badge badge-sm whitespace-nowrap border border-base-300 bg-transparent text-base-content/70">
-                      {row.method}
-                    </span>
-                  </td>
-                  <td className="hidden lg:table-cell text-xs text-base-content/70" title={formatDate(row.updated_at)}>
-                    {relativeTime(row.updated_at)}
-                  </td>
-                  <td>
-                    <button
-                      className="btn btn-primary btn-xs"
-                      onClick={() => onRematch(row.source_type, row.source_stage_id)}
-                      disabled={isRunning}
+                    </td>
+                    <td
+                      className="hidden lg:table-cell text-xs text-base-content/70"
+                      title={formatDate(row.updated_at)}
                     >
-                      {isRunning ? <span className="loading loading-spinner loading-xs" /> : "Re-match"}
-                    </button>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+                      {relativeTime(row.updated_at)}
+                    </td>
+                    <td>
+                      <button
+                        className="btn btn-primary btn-xs"
+                        onClick={() => onRematch(row.source_type, row.source_stage_id)}
+                        disabled={isRunning}
+                      >
+                        {isRunning ? <span className="loading loading-spinner loading-xs" /> : "Re-match"}
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
-
       {selectedResult && <ResultDetailModal result={selectedResult} onClose={() => setSelectedResult(null)} />}
-    </div>
+    </>
   );
 }

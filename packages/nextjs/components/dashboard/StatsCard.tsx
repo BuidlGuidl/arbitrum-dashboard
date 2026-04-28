@@ -31,7 +31,7 @@ export const StatsCard = ({ config, value, isLoading = false }: StatsCardProps) 
             </div>
           </div>
         </div>
-        <p className="text-xs text-base-content/60 mt-2">{sub}</p>
+        <p className="text-sm text-base-content/60 mt-2">{sub}</p>
       </div>
     </div>
   );
