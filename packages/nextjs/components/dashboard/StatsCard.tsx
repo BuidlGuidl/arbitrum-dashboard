@@ -18,7 +18,7 @@ export const StatsCard = ({ config, value, isLoading = false }: StatsCardProps) 
   const iconBg = ICON_BG[color] ?? "bg-base-300";
 
   return (
-    <div className="card bg-base-100 border border-base-300 shadow-sm rounded-xl">
+    <div className="dashboard-card card bg-base-100 border border-base-300 shadow-sm rounded-xl">
       <div className="card-body p-5">
         <div className="flex items-start gap-4">
           <div className={`shrink-0 w-12 h-12 rounded-full flex items-center justify-center ${iconBg}`}>

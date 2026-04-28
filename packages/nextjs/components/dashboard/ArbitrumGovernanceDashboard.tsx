@@ -129,7 +129,7 @@ export const ArbitrumGovernanceDashboard = ({ proposals }: { proposals: Dashboar
       </div>
 
       {/* Table */}
-      <div className="card bg-base-100 border border-base-300 shadow-sm rounded-xl">
+      <div className="dashboard-card card bg-base-100 border border-base-300 shadow-sm rounded-xl">
         <div className="p-3 lg:p-4 border-b border-base-300 flex items-center justify-end">
           <p className="text-sm text-base-content/60 p-0 m-0">
             Showing {filtered.length} of {proposals.length} proposals
