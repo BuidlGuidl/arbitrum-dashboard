@@ -139,7 +139,7 @@ export const ArbitrumGovernanceDashboard = ({ proposals }: { proposals: Dashboar
           <table className="proposals-table table w-full table-fixed min-w-[1100px] [&_th]:py-5 [&_td]:py-6 [&_th]:px-3 [&_td]:px-3">
             <thead className="bg-base-200/60">
               <tr className="text-xs uppercase tracking-wider text-base-content/60">
-                <th className="w-[26%]">Proposal</th>
+                <th className="w-[22%]">Proposal</th>
                 <th className="w-[14%]">Status</th>
                 <th className="w-[10%]">
                   <div className="flex flex-col gap-0.5">
@@ -149,7 +149,7 @@ export const ArbitrumGovernanceDashboard = ({ proposals }: { proposals: Dashboar
                     </span>
                   </div>
                 </th>
-                <th className="w-[10%]">
+                <th className="w-[14%]">
                   <div className="flex flex-col gap-0.5">
                     <span>Onchain</span>
                     <span className="text-[10px] normal-case tracking-normal text-base-content/50 font-normal">
