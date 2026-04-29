@@ -8,7 +8,8 @@ export async function GET(request: NextRequest) {
 
   try {
     const authHeader = request.headers.get("authorization");
-    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    const cronSecret = process.env.CRON_SECRET;
+    if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
       console.error("Unauthorized attempt to access import-forum-posts endpoint");
       return NextResponse.json(
         {
