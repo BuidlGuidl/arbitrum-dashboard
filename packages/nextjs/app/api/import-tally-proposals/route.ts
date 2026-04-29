@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { importTallyProposals } from "~~/services/tally/import";
 
-export async function POST(request: NextRequest) {
+export const maxDuration = 300;
+
+export async function GET(request: NextRequest) {
+  const startedAt = Date.now();
+
   try {
-    // Verify the request is from Vercel Cron using the CRON_SECRET
     const authHeader = request.headers.get("authorization");
-    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    const cronSecret = process.env.CRON_SECRET;
+    if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
       console.error("Unauthorized attempt to access import-tally-proposals endpoint");
       return NextResponse.json(
         {
@@ -18,17 +22,22 @@ export async function POST(request: NextRequest) {
 
     console.log("Importing Tally proposals...");
     await importTallyProposals();
+    const durationMs = Date.now() - startedAt;
+    console.log(`Tally proposals import finished in ${durationMs}ms`);
 
     return NextResponse.json({
       success: true,
       message: "Tally proposals imported successfully",
+      durationMs,
     });
   } catch (error) {
-    console.error("Error importing Tally proposals:", error);
+    const durationMs = Date.now() - startedAt;
+    console.error(`Error importing Tally proposals after ${durationMs}ms:`, error);
     return NextResponse.json(
       {
         success: false,
         error: error instanceof Error ? error.message : "Unknown error occurred",
+        durationMs,
       },
       { status: 500 },
     );

@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { importForumPosts } from "~~/services/forum/import";
 
-export async function POST(request: NextRequest) {
+export const maxDuration = 300;
+
+export async function GET(request: NextRequest) {
+  const startedAt = Date.now();
+
   try {
-    // Verify the request is from Vercel Cron using the CRON_SECRET
     const authHeader = request.headers.get("authorization");
-    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    const cronSecret = process.env.CRON_SECRET;
+    if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
       console.error("Unauthorized attempt to access import-forum-posts endpoint");
       return NextResponse.json(
         {
@@ -18,17 +22,22 @@ export async function POST(request: NextRequest) {
 
     console.log("Importing forum posts...");
     await importForumPosts();
+    const durationMs = Date.now() - startedAt;
+    console.log(`Forum posts import finished in ${durationMs}ms`);
 
     return NextResponse.json({
       success: true,
       message: "Forum posts imported successfully",
+      durationMs,
     });
   } catch (error) {
-    console.error("Error importing forum posts:", error);
+    const durationMs = Date.now() - startedAt;
+    console.error(`Error importing forum posts after ${durationMs}ms:`, error);
     return NextResponse.json(
       {
         success: false,
         error: error instanceof Error ? error.message : "Unknown error occurred",
+        durationMs,
       },
       { status: 500 },
     );
