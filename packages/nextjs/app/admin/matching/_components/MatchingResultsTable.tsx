@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { MatchStatus, MatchingResultRow, SourceType } from "./types";
 import { typeBadgeColor } from "./types";
 
@@ -45,10 +45,8 @@ function formatDate(dateStr: string | null) {
 }
 
 function ResultDetailModal({ result, onClose }: { result: MatchingResultRow; onClose: () => void }) {
-  const dialogRef = useRef<HTMLDialogElement>(null);
-
   return (
-    <dialog ref={dialogRef} className="modal modal-open" onClose={onClose}>
+    <dialog className="modal modal-open" onClose={onClose}>
       <div className="modal-box max-w-lg">
         <button className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2" onClick={onClose}>
           ✕

@@ -248,7 +248,7 @@ export const ArbitrumGovernanceDashboard = ({ proposals }: { proposals: Dashboar
                   <td>
                     <div className="flex flex-col gap-1">
                       {p.forumLink && (
-                        <Link
+                        <LinkBadge
                           href={p.forumLink}
                           label="Forum"
                           color="text-orange-700 dark:text-orange-300"
@@ -256,7 +256,7 @@ export const ArbitrumGovernanceDashboard = ({ proposals }: { proposals: Dashboar
                         />
                       )}
                       {p.snapshotLink && (
-                        <Link
+                        <LinkBadge
                           href={p.snapshotLink}
                           label="Snapshot"
                           color="text-purple-700 dark:text-purple-300"
@@ -264,7 +264,7 @@ export const ArbitrumGovernanceDashboard = ({ proposals }: { proposals: Dashboar
                         />
                       )}
                       {p.tallyLink && (
-                        <Link
+                        <LinkBadge
                           href={p.tallyLink}
                           label="Tally"
                           color="text-cyan-700 dark:text-cyan-300"
@@ -297,7 +297,7 @@ const VoteProgressBar = ({ forRaw, againstRaw }: { forRaw?: number; againstRaw?:
   );
 };
 
-const Link = ({ href, label, color, bg }: { href: string; label: string; color: string; bg: string }) => (
+const LinkBadge = ({ href, label, color, bg }: { href: string; label: string; color: string; bg: string }) => (
   <a
     href={href}
     target="_blank"
