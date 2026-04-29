@@ -1,8 +1,8 @@
 {
   "installCommand": "yarn install",
   "crons": [
-    { "path": "/api/import-forum-posts", "schedule": "0 6 * * 1" },
-    { "path": "/api/import-snapshot-proposals", "schedule": "15 6 * * 1" },
-    { "path": "/api/import-tally-proposals", "schedule": "30 6 * * 1" }
+    { "path": "/api/import-forum-posts", "schedule": "0 6 * * *" },
+    { "path": "/api/import-snapshot-proposals", "schedule": "15 6 * * *" },
+    { "path": "/api/import-tally-proposals", "schedule": "30 6 * * *" }
   ]
 }
