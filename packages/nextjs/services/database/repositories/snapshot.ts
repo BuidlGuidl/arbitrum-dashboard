@@ -10,6 +10,7 @@ export async function getAllSnapshotStagesForComparison() {
       snapshot_id: true,
       title: true,
       author_name: true,
+      body: true,
       status: true,
       voting_start: true,
       voting_end: true,
