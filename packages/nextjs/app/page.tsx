@@ -2,6 +2,8 @@ import type { NextPage } from "next";
 import { ArbitrumGovernanceDashboard } from "~~/components/dashboard/ArbitrumGovernanceDashboard";
 import { type DashboardProposal, getDashboardProposals } from "~~/services/database/repositories/proposals";
 
+export const revalidate = 21600;
+
 const Home: NextPage = async () => {
   let proposals: DashboardProposal[];
   try {
