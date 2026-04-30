@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getUnprocessedSnapshotStages, getUnprocessedTallyStages } from "~~/services/database/repositories/matching";
-import { matchStage } from "~~/services/matching/llm-matching";
+import { MatchStageStatus, matchStage } from "~~/services/matching/llm-matching";
 
 export const maxDuration = 300;
 
 interface StageRunResult {
   sourceType: "snapshot" | "tally";
   stageId: string;
-  status: "matched" | "no_match" | "not_found" | "error";
+  status: MatchStageStatus | "error";
   matchCount?: number;
   error?: string;
 }
@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
         results.push({
           sourceType,
           stageId,
-          status: result.status as StageRunResult["status"],
+          status: result.status,
           matchCount: result.matchCount,
         });
       } catch (err) {
@@ -74,19 +74,22 @@ export async function GET(request: NextRequest) {
     const errors = results.filter(r => r.status === "error").length;
 
     console.log(
-      `match-pending-stages: finished in ${durationMs}ms — processed=${processed}, matched=${matched}, no_match=${noMatch}, errors=${errors}, skipped=${skipped}`,
+      `match-pending-stages: finished in ${durationMs}ms - processed=${processed}, matched=${matched}, no_match=${noMatch}, errors=${errors}, skipped=${skipped}`,
     );
 
-    return NextResponse.json({
-      success: true,
-      durationMs,
-      processed,
-      matched,
-      noMatch,
-      errors,
-      skipped,
-      results,
-    });
+    return NextResponse.json(
+      {
+        success: errors === 0,
+        durationMs,
+        processed,
+        matched,
+        noMatch,
+        errors,
+        skipped,
+        results,
+      },
+      { status: errors > 0 ? 500 : 200 },
+    );
   } catch (error) {
     const durationMs = Date.now() - startedAt;
     console.error(`match-pending-stages: fatal error after ${durationMs}ms:`, error);
