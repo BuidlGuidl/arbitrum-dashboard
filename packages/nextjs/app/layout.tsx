@@ -5,7 +5,7 @@ import "~~/styles/globals.css";
 import { getMetadata } from "~~/utils/scaffold-eth/getMetadata";
 
 export const metadata = getMetadata({
-  title: "Arbitrum DAO Governance",
+  title: "Arbitrum DAO Governance Tracker",
   description: "Unified proposal tracking across all governance stages",
 });
 
