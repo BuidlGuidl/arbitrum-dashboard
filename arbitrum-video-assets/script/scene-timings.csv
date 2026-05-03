@@ -1,0 +1,8 @@
+scene_id,scene_name,start_sec,end_sec,duration_sec,voiceover,on_screen_text
+1,Hook-Fragmentation,0,8,8,"In Arbitrum governance, a single proposal can move from forum discussion to Snapshot to Tally, across different tools and different moments in time.","One proposal. Three platforms. Multiple stages."
+2,Pain-Point,8,18,10,"That makes it harder than it should be to answer one simple question: what stage is this proposal in right now?","Hard to track. Easy to miss context."
+3,Reframe,18,29,11,"The problem is not a lack of information. The problem is fragmentation across the proposal lifecycle.","Discussion. Vote. Execution. All linked in one place."
+4,Product-Reveal,29,38,9,"Arbitrum DAO Governance Tracker brings that lifecycle together into one unified tracker.","Arbitrum DAO Governance Tracker"
+5,Overview-Demo,38,52,14,"You can quickly see whether a proposal is still in discussion, already voted offchain, moving onchain, or fully executed.","Status at a glance"
+6,Search-Flow,52,64,12,"Instead of jumping across governance tools, you can search once, scan the current stage, and jump directly to the relevant source.","Find a proposal. Check its stage. Open the active source."
+7,Close,64,72,8,"It is not a place to vote. It is the place to understand what is happening before you do.","A governance hub, not a voting interface."
