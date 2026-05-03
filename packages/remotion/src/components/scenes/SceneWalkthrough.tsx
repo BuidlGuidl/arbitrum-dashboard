@@ -3,6 +3,7 @@ import {
   AbsoluteFill,
   interpolate,
   OffthreadVideo,
+  Sequence,
   useCurrentFrame,
   useVideoConfig,
 } from "remotion";
@@ -19,8 +20,9 @@ export const SceneWalkthrough: React.FC = () => {
   const frame = useCurrentFrame();
   const { fps, durationInFrames } = useVideoConfig();
 
-  // Recording cutoff: 90s into scene (= 2:02 total)
-  const recordingEnd = fps * 90;
+  // The loading from 31.64s to 39s is cut (7.36s removed).
+  // Original recording cutoff was 90s, so new cutoff is 82.64s.
+  const recordingEnd = fps * 82.64;
 
   // Fade in
   const fadeIn = interpolate(frame, [0, fps * 1.2], [0, 1], {
@@ -104,16 +106,34 @@ export const SceneWalkthrough: React.FC = () => {
               position: "relative",
             }}
           >
-            <OffthreadVideo
-              src={ASSETS.video.walkthrough}
-              style={{
-                width: "100%",
-                display: "block",
-                position: "absolute",
-                top: -80,
-                left: 0,
-              }}
-            />
+            {/* Play from start up to the click (local 31.64s to include the click sound) */}
+            <Sequence durationInFrames={Math.round(fps * 31.64)}>
+              <OffthreadVideo
+                src={ASSETS.video.walkthrough}
+                style={{
+                  width: "100%",
+                  display: "block",
+                  position: "absolute",
+                  top: -80,
+                  left: 0,
+                }}
+              />
+            </Sequence>
+
+            {/* Skip 7.36s of loading and resume playing from local 39s */}
+            <Sequence from={Math.round(fps * 31.64)}>
+              <OffthreadVideo
+                src={ASSETS.video.walkthrough}
+                startFrom={Math.round(fps * 39)}
+                style={{
+                  width: "100%",
+                  display: "block",
+                  position: "absolute",
+                  top: -80,
+                  left: 0,
+                }}
+              />
+            </Sequence>
           </div>
         </div>
       </div>
@@ -128,8 +148,8 @@ const ClosingCard: React.FC = () => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
-  // Fade in as the recording fades out (90s into scene)
-  const recordingEnd = fps * 90;
+  // Fade in as the recording fades out
+  const recordingEnd = fps * 82.64;
   const fadeIn = interpolate(
     frame,
     [recordingEnd - fps * 1, recordingEnd + fps * 0.5],

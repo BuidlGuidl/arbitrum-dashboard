@@ -27,7 +27,7 @@ export const ArbitrumPromoVideo: React.FC = () => {
     <AbsoluteFill
       style={{ background: COLORS.bg, fontFamily: FONT_STACK }}
     >
-      <Audio src={ASSETS.audio.voiceover} />
+      <Audio src={ASSETS.audio.voiceover} playbackRate={1.2} />
 
       <Series>
         {SCENE_TIMINGS.map(({ scene, durationFrames }) => {

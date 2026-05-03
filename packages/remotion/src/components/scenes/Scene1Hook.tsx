@@ -54,9 +54,10 @@ export const Scene1Hook: React.FC = () => {
   });
 
   // Travel of the proposal card across the three panel centers
+  // Slower movement: starts at 2s, middle at 6s, ends at 10s (holds for 2s)
   const travel = interpolate(
     frame,
-    [fps * 1.2, fps * 4, fps * 6.5],
+    [fps * 2, fps * 6, fps * 10],
     [0, 0.5, 1],
     { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
   );
