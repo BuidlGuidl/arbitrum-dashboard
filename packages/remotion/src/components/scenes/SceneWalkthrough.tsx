@@ -19,16 +19,19 @@ export const SceneWalkthrough: React.FC = () => {
   const frame = useCurrentFrame();
   const { fps, durationInFrames } = useVideoConfig();
 
+  // Recording cutoff: 90s into scene (= 2:02 total)
+  const recordingEnd = fps * 90;
+
   // Fade in
   const fadeIn = interpolate(frame, [0, fps * 1.2], [0, 1], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
 
-  // Fade out at the very end
+  // Fade out recording at the cutoff point
   const fadeOut = interpolate(
     frame,
-    [durationInFrames - fps * 2, durationInFrames],
+    [recordingEnd - fps * 1.5, recordingEnd],
     [1, 0],
     { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
   );
@@ -123,11 +126,13 @@ export const SceneWalkthrough: React.FC = () => {
 
 const ClosingCard: React.FC = () => {
   const frame = useCurrentFrame();
-  const { fps, durationInFrames } = useVideoConfig();
+  const { fps } = useVideoConfig();
 
+  // Fade in as the recording fades out (90s into scene)
+  const recordingEnd = fps * 90;
   const fadeIn = interpolate(
     frame,
-    [durationInFrames - fps * 3, durationInFrames - fps * 1],
+    [recordingEnd - fps * 1, recordingEnd + fps * 0.5],
     [0, 1],
     { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
   );

@@ -6,8 +6,8 @@ import {
   useCurrentFrame,
   useVideoConfig,
 } from "remotion";
-import { ASSETS, COLORS, FONT_STACK } from "../../data/assets";
-import { SafeImage } from "../SafeImage";
+import { COLORS, FONT_STACK } from "../../data/assets";
+import { UnifiedCardHTML } from "../UnifiedCardHTML";
 
 /**
  * Scene 3 — Reframe (18–29s)
@@ -150,21 +150,17 @@ export const Scene3Reframe: React.FC = () => {
       <div
         style={{
           position: "absolute",
-          left: "5%",
+          left: 0,
+          right: 0,
           top: OUTPUT_Y,
-          width: "90%",
+          display: "flex",
+          justifyContent: "center",
           opacity: cardIn,
-          transform: `translateY(${(1 - cardIn) * 30}px)`,
-          borderRadius: 18,
-          overflow: "hidden",
-          boxShadow: "0 30px 90px rgba(0,0,0,0.5)",
+          transform: `translateY(${(1 - cardIn) * 30}px) scale(1.5)`,
+          transformOrigin: "top center",
         }}
       >
-        <SafeImage
-          src={ASSETS.intro.unifiedCard}
-          placeholderLabel="Unified proposal card"
-          imgStyle={{ objectFit: "contain", width: "100%", height: "auto" }}
-        />
+        <UnifiedCardHTML />
       </div>
     </AbsoluteFill>
   );
