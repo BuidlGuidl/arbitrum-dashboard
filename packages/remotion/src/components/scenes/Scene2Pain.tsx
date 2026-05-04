@@ -129,12 +129,12 @@ export const Scene2Pain: React.FC = () => {
 
   return (
     <AbsoluteFill style={{ background: COLORS.bg, fontFamily: FONT_STACK }}>
-      {/* Whoosh sound effects for each window slide-in */}
+      {/* Subtle whoosh sound effects for each window slide-in */}
       {windows.map((w, i) => (
         <Sequence key={`sfx-${i}`} from={w.delay}>
           <Audio
-            src={ASSETS.audio.whoosh}
-            volume={Math.max(0.15, 0.5 - i * 0.04)}
+            src={ASSETS.audio.simpleWhoosh}
+            volume={Math.max(0.15, 0.4 - i * 0.03)}
           />
         </Sequence>
       ))}
