@@ -3,6 +3,7 @@
   "crons": [
     { "path": "/api/import-forum-posts", "schedule": "0 6 * * *" },
     { "path": "/api/import-snapshot-proposals", "schedule": "15 6 * * *" },
-    { "path": "/api/import-tally-proposals", "schedule": "30 6 * * *" }
+    { "path": "/api/import-tally-proposals", "schedule": "30 6 * * *" },
+    { "path": "/api/match-pending-stages", "schedule": "0 7 * * *" }
   ]
 }
