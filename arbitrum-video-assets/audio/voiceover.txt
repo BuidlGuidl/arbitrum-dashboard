@@ -7,4 +7,14 @@ The Governance Tracker brings that lifecycle together, so you can quickly see wh
 Instead of jumping across governance tools, you can search once, scan the current stage, and jump directly to the relevant source.
 
 
-You can look for an specific proposal, or filter by the status of the different stages, and see exactly at which point of the lifecycle is each proposal.
+You can look for an specific proposal, or filter by the status of the different stages, and see exactly at which point of the lifecycle each proposal is. You can access the details of each stage on its own platform by clicking on the card, and you can also check the voting results of the latest vote.
+
+f a proposal has several off-chain or on-chain votes, you can check their status and access all of them. And if those votes are not simply yes-or-no, you can see the details of each option and the voting results.
+
+In the last column, you’ll find direct links to each stage of the proposal.
+
+By default, forum discussions are hidden. You can show them by clicking the “Show discussions” toggle.
+
+Hope you like the Governance Tracker. We’d love to hear your thoughts!
+
+Thanks for watching!

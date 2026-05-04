@@ -28,6 +28,25 @@ export const ArbitrumPromoVideo: React.FC = () => {
       style={{ background: COLORS.bg, fontFamily: FONT_STACK }}
     >
       <Audio src={ASSETS.audio.voiceover} playbackRate={1.2} />
+      {/* voiceover2 part 1: starts at 49.2s (frame 1476) and plays until global 59s (duration 294 frames) */}
+      <Sequence from={1476} durationInFrames={294}>
+        <Audio src={ASSETS.audio.voiceover2} />
+      </Sequence>
+
+      {/* voiceover2 part 2: wait 4 seconds (from 59s to 63s), then resume from where it left off, and play until 69s (duration 180 frames) */}
+      <Sequence from={1890} durationInFrames={180}>
+        <Audio src={ASSETS.audio.voiceover2} startFrom={294} />
+      </Sequence>
+
+      {/* voiceover2 part 3: wait 3 seconds (from 69s to 72s), then resume from where it left off, and play until 91s (1:31) (duration 570 frames) */}
+      <Sequence from={2160} durationInFrames={570}>
+        <Audio src={ASSETS.audio.voiceover2} startFrom={474} />
+      </Sequence>
+
+      {/* voiceover2 part 4: wait 3 seconds (from 91s to 94s), then resume the rest of the audio track */}
+      <Sequence from={2820}>
+        <Audio src={ASSETS.audio.voiceover2} startFrom={1044} />
+      </Sequence>
 
       <Series>
         {SCENE_TIMINGS.map(({ scene, durationFrames }) => {

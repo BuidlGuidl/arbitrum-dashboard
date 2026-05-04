@@ -20,9 +20,10 @@ export const SceneWalkthrough: React.FC = () => {
   const frame = useCurrentFrame();
   const { fps, durationInFrames } = useVideoConfig();
 
-  // The loading from 31.64s to 39s is cut (7.36s removed).
-  // Original recording cutoff was 90s, so new cutoff is 82.64s.
-  const recordingEnd = fps * 82.64;
+  // 1st cut: Loading (31.64s to 39s) = 7.36s removed
+  // 2nd cut: Scroll (43.5s to 51.5s) = 8s removed
+  // Original recording cutoff was 90s. With 15.36s removed, new cutoff is 74.64s.
+  const recordingEnd = fps * 74.64;
 
   // Fade in
   const fadeIn = interpolate(frame, [0, fps * 1.2], [0, 1], {
@@ -120,11 +121,26 @@ export const SceneWalkthrough: React.FC = () => {
               />
             </Sequence>
 
-            {/* Skip 7.36s of loading and resume playing from local 39s */}
-            <Sequence from={Math.round(fps * 31.64)}>
+            {/* Skip 7.36s of loading and resume playing from local 39s, up until local 43.5s */}
+            <Sequence from={Math.round(fps * 31.64)} durationInFrames={Math.round(fps * 11.86)}>
               <OffthreadVideo
                 src={ASSETS.video.walkthrough}
                 startFrom={Math.round(fps * 39)}
+                style={{
+                  width: "100%",
+                  display: "block",
+                  position: "absolute",
+                  top: -80,
+                  left: 0,
+                }}
+              />
+            </Sequence>
+
+            {/* Skip 8s of scrolling (until global 1:25) and resume playing from raw video 58.86s */}
+            <Sequence from={Math.round(fps * 43.5)}>
+              <OffthreadVideo
+                src={ASSETS.video.walkthrough}
+                startFrom={Math.round(fps * 58.86)}
                 style={{
                   width: "100%",
                   display: "block",
@@ -149,7 +165,7 @@ const ClosingCard: React.FC = () => {
   const { fps } = useVideoConfig();
 
   // Fade in as the recording fades out
-  const recordingEnd = fps * 82.64;
+  const recordingEnd = fps * 74.64;
   const fadeIn = interpolate(
     frame,
     [recordingEnd - fps * 1, recordingEnd + fps * 0.5],
@@ -194,7 +210,7 @@ const ClosingCard: React.FC = () => {
           marginTop: 8,
         }}
       >
-        A governance hub, not a voting interface.
+        A governance hub for proposals.
       </div>
     </div>
   );
