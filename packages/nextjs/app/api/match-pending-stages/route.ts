@@ -1,3 +1,4 @@
+import { revalidatePath } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
 import { getUnprocessedSnapshotStages, getUnprocessedTallyStages } from "~~/services/database/repositories/matching";
 import { MatchStageStatus, matchStage } from "~~/services/matching/llm-matching";
@@ -76,6 +77,9 @@ export async function GET(request: NextRequest) {
     console.log(
       `match-pending-stages: finished in ${durationMs}ms - processed=${processed}, matched=${matched}, no_match=${noMatch}, errors=${errors}, skipped=${skipped}`,
     );
+
+    // Unconditional: import crons already mutated homepage data even if matching errored.
+    revalidatePath("/");
 
     return NextResponse.json(
       {
