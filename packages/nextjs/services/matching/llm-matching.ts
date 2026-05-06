@@ -129,10 +129,15 @@ async function callGemini(prompt: string): Promise<LlmMatchResult> {
   return parsed;
 }
 
-export async function matchStage(
-  sourceType: "tally" | "snapshot",
-  stageId: string,
-): Promise<{ status: string; proposalId: string | null; matchCount: number }> {
+export type MatchStageStatus = "matched" | "no_match" | "not_found";
+
+export interface MatchStageResult {
+  status: MatchStageStatus;
+  proposalId: string | null;
+  matchCount: number;
+}
+
+export async function matchStage(sourceType: "tally" | "snapshot", stageId: string): Promise<MatchStageResult> {
   // Load the stage info
   let stage: StageInfo | undefined;
 

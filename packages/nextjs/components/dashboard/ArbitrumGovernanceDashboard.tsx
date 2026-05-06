@@ -74,7 +74,7 @@ export const ArbitrumGovernanceDashboard = ({ proposals }: { proposals: Dashboar
       <div>
         <div className="flex items-center gap-4 mb-3">
           <ArbitrumLogo size={56} className="h-12 w-12 lg:h-14 lg:w-14" />
-          <h1 className="text-4xl lg:text-5xl font-bold tracking-tight m-0">Arbitrum DAO Governance Tracking</h1>
+          <h1 className="text-4xl lg:text-5xl font-bold tracking-tight m-0">Arbitrum DAO Governance Tracker</h1>
         </div>
         <p className="text-base-content/60 text-lg">Unified proposal tracking across all governance stages</p>
       </div>
