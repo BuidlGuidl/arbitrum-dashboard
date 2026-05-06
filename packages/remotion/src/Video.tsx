@@ -8,6 +8,8 @@ import { Scene1Hook } from "./components/scenes/Scene1Hook";
 import { Scene2Pain } from "./components/scenes/Scene2Pain";
 import { Scene3Reframe } from "./components/scenes/Scene3Reframe";
 import { SceneWalkthrough } from "./components/scenes/SceneWalkthrough";
+import { Scene5Rag } from "./components/scenes/Scene5Rag";
+import { Scene6Closing } from "./components/scenes/Scene6Closing";
 
 const SCENE_COMPONENTS: Record<number, React.FC> = {
   0: SceneIntro,
@@ -15,6 +17,8 @@ const SCENE_COMPONENTS: Record<number, React.FC> = {
   2: Scene2Pain,
   3: Scene3Reframe,
   4: SceneWalkthrough,
+  5: Scene5Rag,
+  6: Scene6Closing,
 };
 
 /**
@@ -27,7 +31,9 @@ export const ArbitrumPromoVideo: React.FC = () => {
     <AbsoluteFill
       style={{ background: COLORS.bg, fontFamily: FONT_STACK }}
     >
-      <Audio src={ASSETS.audio.voiceover} playbackRate={1.2} />
+      <Sequence durationInFrames={3210}>
+        <Audio src={ASSETS.audio.voiceover} playbackRate={1.2} />
+      </Sequence>
       {/* voiceover2 part 1: starts at 49.2s (frame 1476) and plays until global 59s (duration 294 frames) */}
       <Sequence from={1476} durationInFrames={294}>
         <Audio src={ASSETS.audio.voiceover2} />
@@ -44,8 +50,13 @@ export const ArbitrumPromoVideo: React.FC = () => {
       </Sequence>
 
       {/* voiceover2 part 4: wait 3 seconds (from 91s to 94s), then resume the rest of the audio track */}
-      <Sequence from={2820}>
+      <Sequence from={2820} durationInFrames={390}>
         <Audio src={ASSETS.audio.voiceover2} startFrom={1044} />
+      </Sequence>
+
+      {/* voiceover3: starts after 2 seconds of silence (1:49 / frame 3270) */}
+      <Sequence from={3270}>
+        <Audio src={ASSETS.audio.voiceover3} />
       </Sequence>
 
       <Series>

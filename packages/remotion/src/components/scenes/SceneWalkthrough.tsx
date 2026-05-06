@@ -153,65 +153,7 @@ export const SceneWalkthrough: React.FC = () => {
           </div>
         </div>
       </div>
-
-      {/* Closing card (fades in during the last few seconds) */}
-      <ClosingCard />
     </AbsoluteFill>
   );
 };
 
-const ClosingCard: React.FC = () => {
-  const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
-
-  // Fade in as the recording fades out
-  const recordingEnd = fps * 74.64;
-  const fadeIn = interpolate(
-    frame,
-    [recordingEnd - fps * 1, recordingEnd + fps * 0.5],
-    [0, 1],
-    { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
-  );
-
-  if (fadeIn < 0.01) return null;
-
-  return (
-    <div
-      style={{
-        position: "absolute",
-        inset: 0,
-        background: COLORS.bg,
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 20,
-        opacity: fadeIn,
-        zIndex: 10,
-      }}
-    >
-      <div
-        style={{
-          color: COLORS.text,
-          fontSize: 64,
-          fontWeight: 700,
-          letterSpacing: -1,
-          textAlign: "center",
-        }}
-      >
-        Arbitrum DAO Governance Tracker
-      </div>
-      <div
-        style={{
-          color: COLORS.textMuted,
-          fontSize: 28,
-          fontWeight: 400,
-          textAlign: "center",
-          marginTop: 8,
-        }}
-      >
-        A governance hub for proposals.
-      </div>
-    </div>
-  );
-};
