@@ -3,6 +3,11 @@ import { queryRag } from "~~/services/rag/retrieval";
 import { ALLOWED_STATUSES } from "~~/services/rag/types";
 import type { RagQueryInput } from "~~/services/rag/types";
 
+// Give the function enough headroom for the app-level 30s timeout in
+// retrieval.ts to fire a friendly error message before Vercel kills the
+// request. Without this, the function defaulted to 10s and Pablo saw raw 504s.
+export const maxDuration = 60;
+
 const ALLOWED_STAGES = ["forum", "snapshot", "tally"] as const;
 
 /**

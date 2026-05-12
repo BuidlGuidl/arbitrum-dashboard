@@ -89,6 +89,7 @@ export type RagCitation = {
   url: string;
   snippet: string;
   title?: string;
+  score?: number;
 };
 
 // Output from RAG queries

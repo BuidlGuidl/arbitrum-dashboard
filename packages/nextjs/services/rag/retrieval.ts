@@ -5,6 +5,7 @@ import { getVectorStore, initializeVectorStore } from "./vectorStore";
 import { FilterOperator, MetadataFilter, MetadataFilters } from "@llamaindex/core/vector-store";
 import { OpenAI, OpenAIEmbedding } from "@llamaindex/openai";
 import { MetadataMode, Settings, VectorStoreIndex } from "llamaindex";
+import { SimilarityPostprocessor } from "llamaindex/postprocessors";
 
 const ALLOWED_STAGES: ProposalStage[] = ["forum", "snapshot", "tally"];
 
@@ -135,6 +136,7 @@ function extractCitations(
       url: (metadata.url as string) || "",
       snippet: nodeWithScore.node.text.slice(0, 200) + (nodeWithScore.node.text.length > 200 ? "..." : ""),
       title: resolveCitationTitle(metadata, nodeWithScore.node.text),
+      score: nodeWithScore.score,
     });
   }
 
@@ -190,10 +192,13 @@ export async function queryRag(input: RagQueryInput): Promise<RagQueryOutput> {
   // Determine topK
   const topK = Math.min(input.topK || RAG_CONFIG.defaultTopK, RAG_CONFIG.maxTopK);
 
-  // Create query engine with filters
+  // Create query engine with filters and a similarity cutoff so weakly related
+  // chunks never reach the synthesizer (Pablo review: irrelevant sources surfaced
+  // in answers / citations panel).
   const queryEngine = index.asQueryEngine({
     similarityTopK: topK,
     preFilters: metadataFilters,
+    nodePostprocessors: [new SimilarityPostprocessor({ similarityCutoff: RAG_CONFIG.minSimilarity })],
   });
 
   // Build the augmented query with system prompt
@@ -258,8 +263,11 @@ export async function searchSimilar(query: string, topK: number = 5): Promise<Ra
 
   const nodes = await retriever.retrieve(query);
 
+  // Drop weak matches so the debug view mirrors what the synthesis path sees.
+  const filtered = nodes.filter(n => (n.score ?? 0) >= RAG_CONFIG.minSimilarity);
+
   return extractCitations(
-    nodes.map(n => ({
+    filtered.map(n => ({
       node: {
         text: typeof n.node.getContent === "function" ? n.node.getContent(MetadataMode.NONE) : String(n.node),
         metadata: n.node.metadata,
