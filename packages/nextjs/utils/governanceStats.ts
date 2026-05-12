@@ -1,4 +1,4 @@
-import { ArrowTrendingUpIcon, CalendarDaysIcon, InboxStackIcon, UsersIcon } from "@heroicons/react/24/outline";
+import { ChartPieIcon, ChatBubbleLeftEllipsisIcon, CheckCircleIcon, LinkIcon } from "@heroicons/react/24/solid";
 import type { DashboardProposal } from "~~/services/database/repositories/proposals";
 
 export type Stats = {
@@ -21,28 +21,28 @@ export const STAT_CARD_CONFIG: StatCardConfig[] = [
     title: "Active Discussions",
     sub: "Forum stage proposals with no offchain or onchain voting stages",
     color: "text-orange-500",
-    Icon: UsersIcon,
+    Icon: ChatBubbleLeftEllipsisIcon,
     key: "discussions",
   },
   {
     title: "Active Offchain Votes",
     sub: "Snapshot voting in progress",
     color: "text-purple-500",
-    Icon: InboxStackIcon,
+    Icon: ChartPieIcon,
     key: "offchain",
   },
   {
     title: "Active Onchain Votes",
     sub: "Tally voting in progress",
     color: "text-cyan-500",
-    Icon: ArrowTrendingUpIcon,
+    Icon: LinkIcon,
     key: "onchain",
   },
   {
     title: "Executed / Pending Execution",
     sub: "Completed or awaiting execution",
-    color: "text-cyan-500",
-    Icon: CalendarDaysIcon,
+    color: "text-green-500",
+    Icon: CheckCircleIcon,
     key: "done",
   },
 ];

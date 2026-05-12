@@ -8,25 +8,27 @@
 
 ## Environment Variables
 
-Create a `.env.local` file in `packages/nextjs/` with the following variables:
+Copy `packages/nextjs/.env.example` to `packages/nextjs/.env.local` and fill in the values:
 
 ```bash
-# Tally API key for fetching proposals
-# Get your API key from https://www.tally.xyz/
-TALLY_API_KEY=your_tally_api_key_here
+cp packages/nextjs/.env.example packages/nextjs/.env.local
+```
 
-# Secret for protecting import endpoints (used by cron jobs)
-# Set a secure random string for production
-CRON_SECRET=your_cron_secret_here
+Keys you'll need to set:
 
-# Gemini API key for LLM-based matching
-# Get your API key from https://aistudio.google.com/apikey
-GEMINI_API_KEY=your_gemini_api_key_here
+- `TALLY_API_KEY` — get one from https://www.tally.xyz/
+- `GEMINI_API_KEY` — get one from https://aistudio.google.com/apikey
+- `GEMINI_MODEL` — optional, defaults to `gemini-2.5-flash-lite`. Override to use a stronger model on ambiguous matches (see the LLM Matching section below)
+- `POSTGRES_URL` — your local Postgres connection string (the `docker compose up` flow below sets this up)
+- `CRON_SECRET` — bearer token used to authenticate cron-triggered import endpoints. Generate one with:
 
-# Gemini model to use (optional, defaults to gemini-2.5-flash-lite)
-GEMINI_MODEL=gemini-2.5-flash-lite
+```bash
+openssl rand -base64 32
+```
 
-**Note:** The `.env.local` file is gitignored and should not be committed to version control.
+In production, set `CRON_SECRET` as a Vercel project env var. Vercel Cron will auto-attach it as `Authorization: Bearer ${CRON_SECRET}` when invoking the import routes.
+
+> **Note:** `.env.local` is gitignored and should never be committed.
 
 ## Quickstart
 
@@ -85,27 +87,27 @@ We'd switch to a migration model when ready (site live).
 
 ### Imports
 
-You can locally call the import routes like:
+These routes are GET endpoints, gated by a bearer token that matches `CRON_SECRET`. Vercel Cron sends the same header automatically in production; locally you pass it yourself with curl. The `$CRON_SECRET` reference below assumes the value is loaded into your shell — either source it from `.env.local` or paste the literal value in.
 
 **Forum posts:**
 
 ```sh
-curl -X POST http://localhost:3000/api/import-forum-posts \
-  -H "Authorization: Bearer my-cron-secret"
+curl http://localhost:3000/api/import-forum-posts \
+  -H "Authorization: Bearer $CRON_SECRET"
 ```
 
 **Snapshot proposals:**
 
 ```sh
-curl -X POST http://localhost:3000/api/import-snapshot-proposals \
-  -H "Authorization: Bearer my-cron-secret"
+curl http://localhost:3000/api/import-snapshot-proposals \
+  -H "Authorization: Bearer $CRON_SECRET"
 ```
 
 **Tally proposals:**
 
 ```sh
-curl -X POST http://localhost:3000/api/import-tally-proposals \
-  -H "Authorization: Bearer my-cron-secret"
+curl http://localhost:3000/api/import-tally-proposals \
+  -H "Authorization: Bearer $CRON_SECRET"
 ```
 
 ### LLM Matching

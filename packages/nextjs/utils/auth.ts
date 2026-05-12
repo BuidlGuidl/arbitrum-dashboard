@@ -3,15 +3,31 @@ import { AuthOptions, Session, User, getServerSession } from "next-auth";
 import { JWT } from "next-auth/jwt";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { getCsrfToken } from "next-auth/react";
-import { createPublicClient, http } from "viem";
-import { mainnet } from "viem/chains";
+import { Chain, createPublicClient, fallback, http } from "viem";
 import { type SiweMessage, parseSiweMessage, validateSiweMessage } from "viem/siwe";
+import scaffoldConfig, { DEFAULT_ALCHEMY_API_KEY, ScaffoldConfig } from "~~/scaffold.config";
 import { isAddressAdmin } from "~~/services/database/repositories/users";
+import { enabledChains } from "~~/services/web3/wagmiConfig";
+import { getAlchemyHttpUrl } from "~~/utils/scaffold-eth";
 
-export const publicClient = createPublicClient({
-  chain: mainnet,
-  transport: http(),
-});
+const getPublicClientForChain = (chainId: number) => {
+  const chain = (enabledChains as readonly Chain[]).find(c => c.id === chainId);
+  if (!chain) return null;
+
+  let rpcFallbacks = [http()];
+  const rpcOverrideUrl = (scaffoldConfig.rpcOverrides as ScaffoldConfig["rpcOverrides"])?.[chain.id];
+  if (rpcOverrideUrl) {
+    rpcFallbacks = [http(rpcOverrideUrl), http()];
+  } else {
+    const alchemyHttpUrl = getAlchemyHttpUrl(chain.id);
+    if (alchemyHttpUrl) {
+      const isUsingDefaultKey = scaffoldConfig.alchemyApiKey === DEFAULT_ALCHEMY_API_KEY;
+      rpcFallbacks = isUsingDefaultKey ? [http(), http(alchemyHttpUrl)] : [http(alchemyHttpUrl), http()];
+    }
+  }
+
+  return createPublicClient({ chain, transport: fallback(rpcFallbacks) });
+};
 
 export const providers = [
   CredentialsProvider({
@@ -35,6 +51,12 @@ export const providers = [
         }
 
         const siweMessage = parseSiweMessage(credentials.message) as SiweMessage;
+
+        const publicClient = getPublicClientForChain(siweMessage.chainId);
+        if (!publicClient) {
+          console.error(`Authorization error: SIWE chainId ${siweMessage.chainId} is not in enabledChains`);
+          return null;
+        }
 
         const isMessageValid = validateSiweMessage({
           address: siweMessage?.address,

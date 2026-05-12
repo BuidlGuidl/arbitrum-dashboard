@@ -33,7 +33,7 @@ export const VotingStageCell = ({
   return (
     <div className="flex flex-col gap-1">
       {/* Latest stage */}
-      <div className="flex items-center gap-1.5">
+      <div className="flex flex-wrap items-center gap-1.5 min-w-0">
         {link ? (
           <a href={link} target="_blank" rel="noopener noreferrer">
             <div
@@ -52,10 +52,13 @@ export const VotingStageCell = ({
         {hasHistory && (
           <button
             onClick={() => setExpanded(!expanded)}
-            className="inline-flex items-center gap-0.5 text-[10px] text-base-content/60 hover:text-base-content/90 transition-colors cursor-pointer"
+            title={`${history.length} previous ${history.length === 1 ? "attempt" : "attempts"} — click to ${expanded ? "collapse" : "expand"}`}
+            className={`inline-flex items-center gap-0.5 rounded-full border px-1.5 py-0.5 text-[10px] font-semibold leading-none transition-[filter,background-color] hover:brightness-110 cursor-pointer ${colorScheme.border} ${colorScheme.bg} ${colorScheme.text}`}
           >
             <span>+{history.length}</span>
-            <ChevronDownIcon className={`w-3 h-3 transition-transform duration-200 ${expanded ? "rotate-180" : ""}`} />
+            <ChevronDownIcon
+              className={`w-3.5 h-3.5 transition-transform duration-200 ${expanded ? "rotate-180" : ""}`}
+            />
           </button>
         )}
       </div>
