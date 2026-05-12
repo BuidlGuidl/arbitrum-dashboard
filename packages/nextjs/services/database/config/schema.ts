@@ -24,6 +24,12 @@ export const forumStage = pgTable("forum_stage", {
   message_count: integer("message_count").default(0),
   last_message_at: timestamp("last_message_at"),
   updated_at: timestamp("updated_at").defaultNow(),
+
+  // Content fields for forum post enrichment
+  posts_json: jsonb("posts_json"),
+  content_fetched_at: timestamp("content_fetched_at"),
+  content_fetch_status: varchar("content_fetch_status", { length: 20 }).default("pending"), // pending | success | failed | partial
+  last_fetched_post_count: integer("last_fetched_post_count"),
 });
 
 // Snapshot stage
@@ -39,6 +45,7 @@ export const snapshotStage = pgTable("snapshot_stage", {
   voting_start: timestamp("voting_start"),
   voting_end: timestamp("voting_end"),
 
+  body: text("body"),
   options: jsonb("options"), // flexible voting options
 
   updated_at: timestamp("updated_at").defaultNow(),
@@ -61,6 +68,9 @@ export const tallyStage = pgTable("tally_stage", {
   start_timestamp: timestamp("start_timestamp"),
   end_timestamp: timestamp("end_timestamp"),
 
+  description: text("description"),
+  discourse_url: text("discourse_url"),
+  snapshot_url: text("snapshot_url"),
   options: jsonb("options"), // flexible voting options
 
   last_activity: timestamp("last_activity"),
