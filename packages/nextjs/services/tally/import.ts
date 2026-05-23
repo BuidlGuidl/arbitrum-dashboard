@@ -193,7 +193,7 @@ const transformProposalData = (proposal: TallyProposal) => {
   // Get author name from creator or proposer
   const authorName = proposal.creator.name || proposal.proposer.name || proposal.creator.address;
 
-  // Transform voteStats to options format
+  // Transform voteStats to options format (includes events for lifecycle tracking)
   const options = {
     voteStats: proposal.voteStats.map(stat => ({
       type: stat.type,
@@ -202,6 +202,7 @@ const transformProposalData = (proposal: TallyProposal) => {
       percent: stat.percent,
     })),
     executableCalls: proposal.executableCalls,
+    events: proposal.events,
   };
 
   // Clean title by removing markdown headers (# ## ### etc.) from the start
@@ -231,6 +232,9 @@ const transformProposalData = (proposal: TallyProposal) => {
     author_name: authorName,
     url: url,
     onchain_id: proposal.onchainId || null,
+    description: proposal.metadata.description || null,
+    discourse_url: proposal.metadata.discourseURL || null,
+    snapshot_url: proposal.metadata.snapshotURL || null,
     status: proposal.status || null,
     substatus: null, // Will be handled later via web scraping or onchain data
     substatus_deadline: null, // Will be handled later via web scraping or onchain data
@@ -252,6 +256,9 @@ type ExistingTallyStage = {
   author_name: string | null;
   url: string | null;
   onchain_id: string | null;
+  description: string | null;
+  discourse_url: string | null;
+  snapshot_url: string | null;
   status: string | null;
   substatus: string | null;
   substatus_deadline: Date | null;
@@ -305,6 +312,11 @@ const hasChanges = (existing: ExistingTallyStage, proposal: TallyProposal): bool
   // Use normalized comparison for options to ignore property order
   const optionsChanged = normalizeForComparison(existing.options) !== normalizeForComparison(transformedData.options);
 
+  // Description/URLs are stored but only trigger updates when going from null to having content
+  const descriptionChanged = !existing.description && !!transformedData.description;
+  const discourseUrlChanged = !existing.discourse_url && !!transformedData.discourse_url;
+  const snapshotUrlChanged = !existing.snapshot_url && !!transformedData.snapshot_url;
+
   const changes = {
     title: existing.title !== transformedData.title,
     author_name: existing.author_name !== transformedData.author_name,
@@ -315,6 +327,9 @@ const hasChanges = (existing: ExistingTallyStage, proposal: TallyProposal): bool
     end_timestamp: existingEndTimestamp !== newEndTimestamp,
     last_activity: existingLastActivity !== newLastActivity,
     options: optionsChanged,
+    description: descriptionChanged,
+    discourse_url: discourseUrlChanged,
+    snapshot_url: snapshotUrlChanged,
   };
 
   const hasAnyChanges = Object.values(changes).some(changed => changed);
